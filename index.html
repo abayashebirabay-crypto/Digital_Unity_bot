@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Digital Unity - Payment Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #666;
+            transition: color 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        /* User Info Card */
+        .user-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+
+        .status-approved {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-none {
+            background: #9e9e9e;
+            color: white;
+        }
+
+        /* Payment Card */
+        .payment-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .payment-card h2 {
+            margin-bottom: 1.5rem;
+            color: #667eea;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Transaction History */
+        .history-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9ff;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .nav-links {
+                margin-top: 1rem;
+            }
+            
+            th, td {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="nav-container">
+            <div class="logo">🚀 Digital Unity</div>
+            <div class="nav-links">
+                <a href="#" onclick="showPage('dashboard')">Dashboard</a>
+                <a href="#" onclick="showPage('payment')">Make Payment</a>
+                <a href="#" onclick="showPage('history')">History</a>
+                <a href="#" onclick="showPage('support')">Support</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alert" class="alert"></div>
+        
+        <!-- Dashboard Page -->
+        <div id="dashboard-page">
+            <div class="hero">
+                <h1>Welcome to Digital Unity</h1>
+                <p>Your trusted digital payment platform</p>
+            </div>
+
+            <div id="userCard" class="user-card">
+                <div class="user-info">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <div>
+                        <h3 id="userName">Loading...</h3>
+                        <p id="userId">ID: </p>
+                    </div>
+                </div>
+                <div>
+                    <span class="status-badge" id="paymentStatus">Loading...</span>
+                </div>
+            </div>
+
+            <div class="payment-card">
+                <h2>Quick Actions</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <button class="btn btn-primary" onclick="showPage('payment')">💰 Make Payment</button>
+                    <button class="btn btn-primary" onclick="checkStatus()">📊 Check Status</button>
+                    <button class="btn btn-secondary" onclick="shareContact()">📱 Share Contact</button>
+                    <button class="btn btn-secondary" onclick="shareLocation()">📍 Share Location</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Page -->
+        <div id="payment-page" style="display: none;">
+            <div class="payment-card">
+                <h2>💰 Make a Payment</h2>
+                <form id="paymentForm">
+                    <div style="margin-bottom: 1rem;">
+                        <label>Amount (ETB):</label>
+                        <input type="number" id="amount" required style="width: 100%; padding: 0.8rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 10px;">
+                    </div>
+                    
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-icon">📸</div>
+                        <p>Click to upload payment screenshot</p>
+                        <p style="font-size: 0.9rem; color: #999;">PNG, JPG up to 10MB</p>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    <div id="fileName" style="margin: 1rem 0; color: #667eea;"></div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Payment</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history-page" style="display: none;">
+            <div class="payment-card">
+                <h2>📜 Transaction History</h2>
+                <div id="historyContent" class="history-table">
+                    <p>Loading transactions...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Page -->
+        <div id="support-page" style="display: none;">
+            <div class="payment-card">
+                <h2>❓ Need Help?</h2>
+                <p>Contact our support team:</p>
+                <p>📧 Email: support@digitalunity.com</p>
+                <p>📱 Telegram: @DigitalUnity_support</p>
+                <p>⏰ Response time: 24-48 hours</p>
+                <button class="btn btn-primary" onclick="window.open('https://t.me/DigitalUnity_bot', '_blank')" style="margin-top: 1rem;">Contact Support</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div id="modalContent"></div>
+            <button onclick="closeModal()" class="btn btn-secondary" style="margin-top: 1rem;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Get Telegram user data
+        let telegramUser = null;
+        let userData = null;
+
+        // Initialize
+        window.onload = function() {
+            // Get user from Telegram Web App or URL params
+            if (window.Telegram && Telegram.WebApp) {
+                telegramUser = Telegram.WebApp.initDataUnsafe.user;
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+            }
+            
+            loadUserData();
+        };
+
+        // Load user data from backend
+        async function loadUserData() {
+            try {
+                const userId = telegramUser ? telegramUser.id : 1296141395; // Default for testing
+                const response = await fetch(`/api/user/${userId}`);
+                userData = await response.json();
+                
+                document.getElementById('userName').textContent = userData.name || 'User';
+                document.getElementById('userId').textContent = `ID: ${userId}`;
+                document.getElementById('userAvatar').textContent = userData.name ? userData.name.charAt(0) : 'U';
+                
+                const statusBadge = document.getElementById('paymentStatus');
+                const status = userData.payment_status || 'none';
+                
+                statusBadge.textContent = status.toUpperCase();
+                statusBadge.className = `status-badge status-${status}`;
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        // Show different pages
+        function showPage(page) {
+            document.getElementById('dashboard-page').style.display = 'none';
+            document.getElementById('payment-page').style.display = 'none';
+            document.getElementById('history-page').style.display = 'none';
+            document.getElementById('support-page').style.display = 'none';
+            
+            document.getElementById(`${page}-page`).style.display = 'block';
+            
+            if (page === 'history') {
+                loadHistory();
+            }
+        }
+
+        // Check payment status
+        async function checkStatus() {
+            showAlert('Checking status...', 'success');
+            await loadUserData();
+            showAlert(`Status: ${userData.payment_status}`, 'success');
+        }
+
+        // Share contact
+        function shareContact() {
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.requestContact();
+            } else {
+                showAlert('Please open this page from Telegram bot', 'error');
+            }
+        }
+
+        // Share location
+        function shareLocation() {
+            if (window.Telegram && Telegram.WebApp) {
+                Telegram.WebApp.requestLocation();
+            } else {
+                showAlert('Please open this page from Telegram bot', 'error');
+            }
+        }
+
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+            }
+        });
+
+        // Payment form submission
+        document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const amount = document.getElementById('amount').value;
+            const file = document.getElementById('fileInput').files[0];
+            
+            if (!amount || !file) {
+                showAlert('Please fill all fields', 'error');
+                return;
+            }
+            
+            showAlert('Submitting payment...', 'success');
+            
+            const formData = new FormData();
+            formData.append('amount', amount);
+            formData.append('file', file);
+            formData.append('user_id', telegramUser ? telegramUser.id : 1296141395);
+            
+            try {
+                const response = await fetch('/api/submit-payment', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('Payment submitted successfully!', 'success');
+                    setTimeout(() => showPage('dashboard'), 2000);
+                } else {
+                    showAlert('Error: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+            }
+        });
+
+        // Load transaction history
+        async function loadHistory() {
+            try {
+                const userId = telegramUser ? telegramUser.id : 1296141395;
+                const response = await fetch(`/api/history/${userId}`);
+                const history = await response.json();
+                
+                if (history.length === 0) {
+                    document.getElementById('historyContent').innerHTML = '<p>No transactions found</p>';
+                    return;
+                }
+                
+                let html = '<table><tr><th>Date</th><th>Amount</th><th>Status</th></tr>';
+                history.forEach(tx => {
+                    html += `<tr>
+                        <td>${new Date(tx.date).toLocaleDateString()}</td>
+                        <td>${tx.amount} ETB</td>
+                        <td>${tx.status}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('historyContent').innerHTML = html;
+            } catch (error) {
+                document.getElementById('historyContent').innerHTML = '<p>Error loading history</p>';
+            }
+        }
+
+        // Show alert message
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        // Modal functions
+        function showModal(content) {
+            document.getElementById('modalContent').innerHTML = content;
+            document.getElementById('modal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
