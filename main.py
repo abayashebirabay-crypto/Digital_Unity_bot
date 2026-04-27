@@ -1,9 +1,17 @@
 import logging
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ConversationHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from config import TOKEN, ADMIN_ID
-from handlers.user import registration_conv_handler, pay_handler, status_handler, profile_handler
-from handlers.admin import approve_handler, reject_handler
+from handlers.user import (
+    app_handler,
+    pay_handler,
+    payment_handler,
+    profile_handler,
+    registration_conv_handler,
+    start,
+    status_handler,
+)
+from handlers.admin import announce_winner_command, approve_handler, reject_handler
 from handlers.payment import photo_handler
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -29,17 +37,20 @@ async def error_handler(update, context):
 
 def main():
     app = Application.builder().token(TOKEN).build()
-    
+
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(registration_conv_handler)
     app.add_handler(pay_handler)
     app.add_handler(status_handler)
     app.add_handler(profile_handler)
+    app.add_handler(app_handler)
+    app.add_handler(CommandHandler("announce_winner", announce_winner_command))
     app.add_handler(photo_handler)
     app.add_handler(approve_handler)
     app.add_handler(reject_handler)
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
-    
+
     print(f"🚀 Bot Started! Admin ID: {ADMIN_ID}")
     app.run_polling()
 
