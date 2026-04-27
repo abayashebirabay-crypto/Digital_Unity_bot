@@ -17,8 +17,30 @@ function App() {
     tg.ready();
     tg.expand();
   }
+  
+  // Get user ID from URL parameter FIRST (passed from bot)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlUserId = urlParams.get('user_id');
+  
+  // Get from Telegram WebApp as fallback
   const telegramUser = tg?.initDataUnsafe?.user;
-  const userId = telegramUser?.id || 1296141395;
+  
+  // Priority: URL parameter > Telegram user > default test ID
+  let userId = null;
+  
+  if (urlUserId) {
+    userId = parseInt(urlUserId);
+    console.log('✅ Using user_id from URL:', userId);
+  } else if (telegramUser?.id) {
+    userId = telegramUser.id;
+    console.log('✅ Using user_id from Telegram:', userId);
+  } else {
+    userId = 1296141395;
+    console.log('⚠️ Using default user_id:', userId);
+  }
+  
+  console.log('Final User ID:', userId);
+  console.log('Full URL:', window.location.href);
 
   useEffect(() => {
     loadDashboard();

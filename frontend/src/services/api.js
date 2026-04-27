@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// Use the ngrok URL from your backend
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-
+// Use the current window's origin (works for localhost and ngrok)
+const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin;
 console.log('API Base URL:', API_BASE_URL);
 
 const api = axios.create({
@@ -33,4 +32,5 @@ export const getWinners = () => api.get('/api/winners');
 export const getAnnouncements = () => api.get('/api/announcements');
 export const getReferralStats = (userId) => api.get(`/api/referral/${userId}`);
 export const getReferralLeaderboard = () => api.get('/api/referral-leaderboard');
+
 export default api;

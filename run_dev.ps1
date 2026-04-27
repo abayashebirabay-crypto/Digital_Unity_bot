@@ -23,6 +23,14 @@ function Update-ConfigUrl {
     }
 }
 
+function Update-EnvFile {
+    param([string]$ApiUrl)
+    $envPath = Join-Path $PWD "frontend\.env"
+    $content = "REACT_APP_API_URL=$ApiUrl`n"
+    Set-Content $envPath $content -NoNewline
+    Write-Host "✅ Created frontend/.env with REACT_APP_API_URL = $ApiUrl" -ForegroundColor Green
+}
+
 function Get-NgrokUrl {
     param([int]$TargetPort)
     $maxAttempts = 30
@@ -33,14 +41,14 @@ function Get-NgrokUrl {
     while ($attempt -lt $maxAttempts) {
         try {
             $response = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -ErrorAction SilentlyContinue
-            $tunnels = $response.tunnels | Where-Object { $_.proto -eq "https" -and $_.config.addr -like "*$TargetPort*" }
-            if ($tunnels -and $tunnels.public_url) {
-                return $tunnels.public_url
-            }
-            # Also try without port filter
-            $anyTunnel = $response.tunnels | Where-Object { $_.proto -eq "https" }
-            if ($anyTunnel -and $anyTunnel.public_url) {
-                return $anyTunnel.public_url
+            # Get ALL tunnels and find the one for our port
+            $tunnels = $response.tunnels | Where-Object { $_.config.addr -like "*$TargetPort*" -and $_.proto -eq "https" }
+            if ($tunnels) {
+                # Return the most recent one
+                $tunnel = $tunnels | Select-Object -First 1
+                if ($tunnel -and $tunnel.public_url) {
+                    return $tunnel.public_url
+                }
             }
         } catch {
             # ngrok API not ready yet
@@ -78,33 +86,57 @@ if ($UseNgrok) {
         exit 1
     }
     
-    # Start ngrok for React port (so external users can access)
-    Write-Host "Starting ngrok for React on port $ReactPort..." -ForegroundColor Green
-    $ngrokReactCmd = "ngrok http $ReactPort"
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", $ngrokReactCmd
+    # Start ngrok for Backend API FIRST (port 8000)
+    Write-Host "Starting ngrok for Backend API on port $Port..." -ForegroundColor Green
+    $ngrokBackendCmd = "ngrok http $Port"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", $ngrokBackendCmd
     
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 5
     
-    # Get React ngrok URL
-    $reactNgrokUrl = Get-NgrokUrl -TargetPort $ReactPort
+    # Get backend ngrok URL
+    $backendNgrokUrl = Get-NgrokUrl -TargetPort $Port
     
-    if ($reactNgrokUrl) {
-        $WebAppUrl = $reactNgrokUrl
-        Write-Host ""
-        Write-Host "✅ React accessible at: $WebAppUrl" -ForegroundColor Green
-        Write-Host ""
+    if ($backendNgrokUrl) {
+        Write-Host "✅ Backend API accessible at: $backendNgrokUrl" -ForegroundColor Green
+        
+        # Create .env file for React with BACKEND URL
+        Update-EnvFile -ApiUrl $backendNgrokUrl
+        
+        # Start ngrok for React port (different subdomain will be assigned)
+        Write-Host "Starting ngrok for React on port $ReactPort..." -ForegroundColor Green
+        $ngrokReactCmd = "ngrok http $ReactPort"
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", $ngrokReactCmd
+        
+        Start-Sleep -Seconds 5
+        
+        # Get React ngrok URL (this will be a DIFFERENT URL)
+        $reactNgrokUrl = Get-NgrokUrl -TargetPort $ReactPort
+        
+        if ($reactNgrokUrl) {
+            $WebAppUrl = $reactNgrokUrl
+            Write-Host "✅ React accessible at: $WebAppUrl" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "⚠️ TWO DIFFERENT URLs:" -ForegroundColor Yellow
+            Write-Host "   🌐 REACT APP URL (share this): $WebAppUrl" -ForegroundColor Cyan
+            Write-Host "   🔌 BACKEND API URL (internal): $backendNgrokUrl" -ForegroundColor Cyan
+            Write-Host ""
+            
+            # Update config.py with React URL (for bot's WebApp button)
+            Update-ConfigUrl -Url $WebAppUrl
+        } else {
+            Write-Host "⚠️ Could not auto-detect React ngrok URL." -ForegroundColor Yellow
+            $WebAppUrl = Read-Host "Enter React ngrok HTTPS URL"
+            Update-ConfigUrl -Url $WebAppUrl
+        }
     } else {
-        Write-Host ""
-        Write-Host "⚠️ Could not auto-detect React ngrok URL." -ForegroundColor Yellow
-        $WebAppUrl = Read-Host "Enter React ngrok HTTPS URL"
+        Write-Host "⚠️ Could not auto-detect Backend ngrok URL." -ForegroundColor Yellow
+        $WebAppUrl = "http://localhost:3000"
+        Write-Host "Using localhost for React" -ForegroundColor Yellow
     }
 } else {
     $WebAppUrl = "http://localhost:3000"
     Write-Host "Using React dev server at: $WebAppUrl (local only)" -ForegroundColor Yellow
 }
-
-# Update config.py with the URL
-Update-ConfigUrl -Url $WebAppUrl
 
 # Set environment variable for web_server to detect dev mode
 $env:WEB_APP_URL = $WebAppUrl
@@ -114,8 +146,10 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "BACKEND API: http://localhost:$Port" -ForegroundColor Yellow
 Write-Host "REACT DEV: http://localhost:$ReactPort" -ForegroundColor Yellow
 if ($UseNgrok) {
-    Write-Host "🌐 PUBLIC REACT URL: $WebAppUrl" -ForegroundColor Green
-    Write-Host "   (Share this with other users)" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "🌐 SHARE REACT URL WITH OTHER USERS:" -ForegroundColor Green
+    Write-Host "   $WebAppUrl" -ForegroundColor Yellow
+    Write-Host ""
 }
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
@@ -146,18 +180,9 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "📱 React App (local): http://localhost:$ReactPort" -ForegroundColor Cyan
 Write-Host "🔌 Backend API (local): http://localhost:$Port" -ForegroundColor Cyan
-if ($UseNgrok) {
-    Write-Host ""
-    Write-Host "🌐 SHARE THIS URL WITH OTHER USERS:" -ForegroundColor Green
-    Write-Host "   $WebAppUrl" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "⚠️  Make sure to update your bot's WEB_APP_URL in config.py" -ForegroundColor Cyan
-    Write-Host "   Current URL: $WebAppUrl" -ForegroundColor Yellow
-}
-Write-Host ""
-Write-Host "⚡ Changes to React code will auto-refresh the browser" -ForegroundColor Yellow
-Write-Host "⚡ Changes to Python code will auto-restart the backend" -ForegroundColor Yellow
-Write-Host "⚡ Changes to bot code will auto-restart the bot" -ForegroundColor Yellow
+Write-Host "⚡ React hot reload enabled" -ForegroundColor Yellow
+Write-Host "⚡ Backend auto-reload enabled" -ForegroundColor Yellow
+Write-Host "⚡ Bot auto-reload enabled" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Press Ctrl+C to stop all services" -ForegroundColor Yellow
 
