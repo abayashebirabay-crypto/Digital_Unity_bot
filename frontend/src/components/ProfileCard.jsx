@@ -47,28 +47,28 @@ const ProfileCard = ({ userData, selectedNumber, referralStats }) => {
       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-3 text-center text-white">
           <div className="text-xs opacity-90">👥 Invited Friends</div>
-          <div className="text-2xl font-bold">{referralStats?.referral_count || 0}</div>
+          <div className="text-2xl font-bold">{referralStats?.referral_count || userData?.referral_count || 0}</div>
         </div>
         <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-3 text-center text-white">
           <div className="text-xs opacity-90">⭐ Referral Points</div>
-          <div className="text-2xl font-bold">{referralStats?.referral_points || 0}</div>
+          <div className="text-2xl font-bold">{referralStats?.referral_points || userData?.referral_points || 0}</div>
         </div>
       </div>
 
       {/* Referral Code Section */}
-      {referralStats?.referral_code && (
+      {(referralStats?.referral_code || userData?.referral_code) && (
         <div className="mt-3 pt-3 border-t border-gray-200">
           <div className="flex justify-between items-center">
             <span className="text-xs text-gray-500">Your Referral Code</span>
             <span className="text-sm font-mono font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-lg">
-              {referralStats.referral_code}
+              {referralStats?.referral_code || userData?.referral_code}
             </span>
           </div>
         </div>
       )}
 
       {/* Invited By (if referred by someone) */}
-      {referralStats?.invited_by && (
+      {(referralStats?.invited_by || userData?.invited_by) && (
         <div className="mt-2 text-center">
           <span className="text-xs text-gray-400">
             🎁 Joined via referral

@@ -12,7 +12,7 @@ DB_NAME: Final = os.getenv("DB_NAME", "digital_unity")
 # Public mini app URL (must be https in production)
 # Public mini app URL (must be https in production)
 WEB_APP_URL = "https://blot-animal-matcher.ngrok-free.dev"  # Use YOUR port number
-BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "DigitalUnity_bot")
+BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "@DigitalUnity_bot")
 
 UPLOAD_DIR: Final = os.getenv("UPLOAD_DIR", "uploads")
 WINNER_TOP_LIMIT: Final = int(os.getenv("WINNER_TOP_LIMIT", "10"))

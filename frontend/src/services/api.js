@@ -10,7 +10,32 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',
   },
+  timeout: 30000, // 30 second timeout
 });
+
+// Request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for debugging
+api.interceptors.response.use(
+  (response) => {
+    console.log(`📥 ${response.status} ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error('Response error:', error.response?.status, error.config?.url, error.message);
+    return Promise.reject(error);
+  }
+);
 
 // For file uploads (multipart/form-data)
 export const uploadPayment = (formData) => {
@@ -32,5 +57,6 @@ export const getWinners = () => api.get('/api/winners');
 export const getAnnouncements = () => api.get('/api/announcements');
 export const getReferralStats = (userId) => api.get(`/api/referral/${userId}`);
 export const getReferralLeaderboard = () => api.get('/api/referral-leaderboard');
+export const getGameConfig = () => api.get('/api/game/config');
 
 export default api;

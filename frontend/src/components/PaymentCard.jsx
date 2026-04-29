@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { uploadPayment } from '../services/api';
-const PaymentCard = ({ userId, selectedNumber, numberPrices, onPaymentSuccess }) => {
+
+const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+
+  // Guard clause
+  if (!selectedNumber || !gameConfig) {
+    return null;
+  }
+
+  const pricePerNumber = gameConfig.price_per_number || 100;
+  const currentRound = gameConfig.round || gameConfig.game_id || '?';
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -19,37 +28,48 @@ const PaymentCard = ({ userId, selectedNumber, numberPrices, onPaymentSuccess })
       return;
     }
 
+    const amount = pricePerNumber;
+    
+    console.log('Payment submission:', { userId, selectedNumber, amount, round: currentRound });
+
     setUploading(true);
     const formData = new FormData();
-    formData.append('user_id', userId);
-    formData.append('amount', numberPrices[selectedNumber]);
-    formData.append('number', selectedNumber);
+    formData.append('user_id', userId.toString());
+    formData.append('amount', amount.toString());
+    formData.append('number', selectedNumber.toString());
     formData.append('file', file);
 
     try {
       const response = await uploadPayment(formData);
+      console.log('Payment response:', response.data);
+      
       if (response.data.success) {
-        toast.success('Payment submitted! Waiting for approval.');
-        setTimeout(() => onPaymentSuccess(), 2000);
+        toast.success(`Payment submitted for Round #${currentRound}! Waiting for approval.`);
+        setTimeout(() => {
+          onPaymentSuccess();
+        }, 2000);
       } else {
         toast.error(response.data.message || 'Payment failed');
       }
     } catch (error) {
-      toast.error('Network error');
+      console.error('Payment error:', error);
+      toast.error(error.response?.data?.message || 'Network error');
     } finally {
       setUploading(false);
       setFile(null);
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput) fileInput.value = '';
     }
   };
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-lg mb-4">
-      <h3 className="text-lg font-bold text-purple-700 mb-4">💳 Make Payment</h3>
+      <h3 className="text-lg font-bold text-purple-700 mb-4">💳 Make Payment - Round #{currentRound}</h3>
       
       {selectedNumber && (
         <div className="bg-gray-100 rounded-xl p-3 text-center font-semibold text-gray-700 mb-4">
           Selected: <strong className="text-purple-600">{selectedNumber}</strong> | 
-          Amount: <strong className="text-green-600">{numberPrices[selectedNumber]} ETB</strong>
+          Amount: <strong className="text-green-600">{pricePerNumber} ETB</strong>
         </div>
       )}
       
@@ -69,7 +89,10 @@ const PaymentCard = ({ userId, selectedNumber, numberPrices, onPaymentSuccess })
       </div>
       
       <div 
-        onClick={() => document.getElementById('fileInput').click()}
+        onClick={() => {
+          const fileInput = document.getElementById('fileInput');
+          if (fileInput) fileInput.click();
+        }}
         className="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all"
       >
         📸 Click to upload payment screenshot
@@ -91,7 +114,7 @@ const PaymentCard = ({ userId, selectedNumber, numberPrices, onPaymentSuccess })
       
       <button 
         onClick={handleSubmit} 
-        disabled={uploading}
+        disabled={uploading || !selectedNumber}
         className="w-full mt-5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {uploading ? (
