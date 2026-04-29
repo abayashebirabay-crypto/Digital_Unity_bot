@@ -659,7 +659,6 @@ const AdminPanel = () => {
           </button>
         </div>
 
-        {/* Rest of the tabs remain the same */}
         {activeTab === "pending" && (
           <div className="bg-gray-800 rounded-2xl p-6">
             <h2 className="text-xl font-bold text-white mb-4">
@@ -677,7 +676,7 @@ const AdminPanel = () => {
                     className="bg-gray-700 rounded-xl p-4"
                   >
                     <div className="flex justify-between items-start flex-wrap gap-4">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-bold text-white">
                           @{payment.user_name || payment.username}
                         </div>
@@ -693,7 +692,25 @@ const AdminPanel = () => {
                         <div className="text-xs text-gray-400">
                           Payment ID: {payment.payment_id}
                         </div>
+                        <div className="text-xs text-gray-400">
+                          Amount: {payment.amount} ETB
+                        </div>
                       </div>
+
+                      {payment.image_url && (
+                        <div className="flex-shrink-0">
+                          <img
+                            src={payment.image_url}
+                            alt="Payment proof"
+                            className="w-20 h-20 rounded-lg object-cover border border-gray-500 cursor-pointer hover:opacity-80 transition-all hover:scale-105"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(payment.image_url, "_blank");
+                            }}
+                          />
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => approvePayment(payment.payment_id)}

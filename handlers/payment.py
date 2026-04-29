@@ -2,9 +2,11 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import MessageHandler, filters, ContextTypes
 from datetime import datetime
 import uuid
+import os
 
-from config import ADMIN_ID
+from config import ADMIN_ID, UPLOAD_DIR
 from database import get_active_game, payments_collection, users_collection
+
 
 async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle payment screenshots sent directly to bot"""
@@ -21,11 +23,6 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data['awaiting_payment'] = False
         return
 
-    if user.get('payment_status') == 'pending':
-        await update.message.reply_text("⏳ You already have a pending payment. Please wait for admin approval.")
-        context.user_data['awaiting_payment'] = False
-        return
-
     active_game = get_active_game()
     active_game_id = active_game["game_id"]
     price_per_number = active_game.get("price_per_number", 100)
@@ -38,12 +35,9 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data['awaiting_payment'] = False
         return
 
-    user_selected_number = None
-    user_selected_game = user.get("selected_game_id")
-    
-    if user_selected_game == active_game_id:
-        user_selected_number = user.get("selected_number")
-    else:
+    # Get user's temp selected numbers
+    temp_selections = user.get("temp_selected_numbers", [])
+    if not temp_selections:
         await update.message.reply_text(
             "❌ Please select a lucky number in the Mini App first.\n\n"
             "1. Open the Mini App\n"
@@ -52,11 +46,27 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
         )
         context.user_data['awaiting_payment'] = False
         return
-
+    
+    user_selected_number = temp_selections[0] if temp_selections else None
+    
     if not user_selected_number:
         await update.message.reply_text(
-            "❌ Please select a lucky number in the Mini App first.\n\n"
-            "Open the Mini App and choose your number before sending payment."
+            "❌ Please select a lucky number in the Mini App first."
+        )
+        context.user_data['awaiting_payment'] = False
+        return
+
+    # Check if user already has pending payment for this number
+    existing_pending = payments_collection.find_one({
+        "telegram_id": user_id,
+        "game_id": active_game_id,
+        "number": user_selected_number,
+        "status": "pending"
+    })
+    
+    if existing_pending:
+        await update.message.reply_text(
+            f"⏳ You already have a pending payment for number {user_selected_number}. Please wait for approval."
         )
         context.user_data['awaiting_payment'] = False
         return
@@ -65,6 +75,12 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
     file_id = photo.file_id
     payment_id = str(uuid.uuid4())
 
+    # Download and save photo
+    file = await context.bot.get_file(file_id)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_path = os.path.join(UPLOAD_DIR, f"{payment_id}.jpg")
+    await file.download_to_drive(file_path)
+
     payment_data = {
         "payment_id": payment_id,
         "telegram_id": user_id,
@@ -72,6 +88,7 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
         "number": user_selected_number,
         "amount": price_per_number,
         "file_id": file_id,
+        "file_path": file_path,
         "status": "pending",
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
@@ -80,12 +97,13 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
     }
     payments_collection.insert_one(payment_data)
 
+    # Remove from temp selections
+    temp_selections.remove(user_selected_number)
     users_collection.update_one(
         {"telegram_id": user_id},
         {"$set": {
+            "temp_selected_numbers": temp_selections,
             "payment_status": "pending",
-            "payment_image": file_id,
-            "payment_id": payment_id,
             "current_game_id": active_game_id,
             "updated_at": datetime.utcnow(),
         }}
@@ -104,34 +122,35 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     context.user_data['awaiting_payment'] = False
 
+    # Send to admin with image
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user_id}_{active_game_id}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user_id}_{active_game_id}")
+            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user_id}_{active_game_id}_{payment_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user_id}_{active_game_id}_{payment_id}")
         ]
     ])
 
     try:
-        await context.bot.send_photo(
-            chat_id=ADMIN_ID,
-            photo=file_id,
-            caption=(
-                f"💰 *New Payment Received!*\n\n"
-                f"👤 User: @{user.get('username', 'unknown')}\n"
-                f"🆔 ID: `{user_id}`\n"
-                f"🎮 Game Round: #{active_game_id}\n"
-                f"🔢 Number: {user_selected_number}\n"
-                f"💰 Amount: {price_per_number} ETB\n"
-                f"📞 Phone: {user.get('phone_number', 'N/A')}\n"
-                f"🆔 Payment ID: `{payment_id}`\n\n"
-                f"📅 Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
-            ),
-            reply_markup=keyboard,
-            parse_mode='Markdown'
-        )
+        with open(file_path, 'rb') as f:
+            await context.bot.send_photo(
+                chat_id=ADMIN_ID,
+                photo=f,
+                caption=(
+                    f"💰 *New Payment Received!*\n\n"
+                    f"👤 User: @{user.get('username', 'unknown')}\n"
+                    f"🆔 ID: `{user_id}`\n"
+                    f"🎮 Game Round: #{active_game_id}\n"
+                    f"🔢 Number: {user_selected_number}\n"
+                    f"💰 Amount: {price_per_number} ETB\n"
+                    f"📞 Phone: {user.get('phone_number', 'N/A')}\n"
+                    f"🆔 Payment ID: `{payment_id}`"
+                ),
+                reply_markup=keyboard,
+                parse_mode='Markdown'
+            )
     except Exception as e:
-        print(f"Could not notify admin: {e}")
+        print(f"Could not send photo to admin: {e}")
 
 
-# Export handler (ONLY payment handler - no admin handlers here)
+# Export handler
 photo_handler = MessageHandler(filters.PHOTO, payment_photo_handler)

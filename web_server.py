@@ -545,6 +545,13 @@ async def admin_stats(admin_id: int = Query(...)):
         "active_game_round": active_game["game_id"]
     })
 
+@app.get("/api/uploads/{filename}")
+async def get_uploaded_image(filename: str):
+    """Serve uploaded payment images"""
+    file_path = Path(UPLOAD_DIR) / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(file_path, media_type="image/jpeg")
 
 @app.get("/api/admin/pending-payments")
 async def admin_pending_payments(admin_id: int = Query(...)):
@@ -554,7 +561,7 @@ async def admin_pending_payments(admin_id: int = Query(...)):
     active_game = get_active_game()
     active_game_id = active_game["game_id"]
     
-    # Get ALL pending payments for the current game (not users)
+    # Get ALL pending payments for the current game
     pending_payments = list(payments_collection.find(
         {
             "game_id": active_game_id,
@@ -564,13 +571,18 @@ async def admin_pending_payments(admin_id: int = Query(...)):
          "user_name": 1, "phone_number": 1, "created_at": 1, "file_path": 1}
     ).sort("created_at", -1))
     
-    # Convert datetime to string
+    # Convert datetime to string and add image URL
     for payment in pending_payments:
         if "created_at" in payment and payment["created_at"]:
             if hasattr(payment["created_at"], 'isoformat'):
                 payment["created_at"] = payment["created_at"].isoformat()
             else:
                 payment["created_at"] = str(payment["created_at"])
+        
+        # Add image URL for display
+        if "file_path" in payment and payment["file_path"]:
+            filename = Path(payment["file_path"]).name
+            payment["image_url"] = f"/api/uploads/{filename}"
     
     return JSONResponse({
         "pending_payments": pending_payments, 

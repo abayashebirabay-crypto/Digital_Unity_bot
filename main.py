@@ -1,4 +1,5 @@
 import logging
+import traceback
 from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from config import TOKEN, ADMIN_ID
@@ -12,10 +13,18 @@ from handlers.user import (
     start,
     status_handler,
 )
-from handlers.admin import approve_handler, reject_handler, announce_winner_command
+from handlers.admin import (
+    approve_handler, 
+    reject_handler, 
+    announce_winner_handler,  # Note: this is the handler, not the command function
+    check_payments_handler    # This is the CommandHandler object
+)
 from handlers.payment import photo_handler
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+    level=logging.INFO
+)
 
 async def button_callback(update: Update, context):
     """Handle button clicks from main menu (non-admin buttons)"""
@@ -33,6 +42,7 @@ async def button_callback(update: Update, context):
 
 async def error_handler(update, context):
     print(f"Error: {context.error}")
+    traceback.print_exc()
     if update and update.effective_message:
         await update.effective_message.reply_text("❌ An error occurred. Please try again later.")
 
@@ -49,14 +59,23 @@ def main():
     app.add_handler(status_handler)
     app.add_handler(profile_handler)
     app.add_handler(app_handler)
-    app.add_handler(CommandHandler("announce_winner", announce_winner_command))
-    app.add_handler(photo_handler)          # Payment photo handler
-    app.add_handler(approve_handler)        # Admin approve callback
-    app.add_handler(reject_handler)         # Admin reject callback
+    
+    # Admin commands - these are CommandHandler objects
+    app.add_handler(announce_winner_handler)
+    app.add_handler(check_payments_handler)
+    
+    # Payment and callback handlers
+    app.add_handler(photo_handler)
+    app.add_handler(approve_handler)
+    app.add_handler(reject_handler)
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
     
     print(f"🚀 Bot Started! Admin ID: {ADMIN_ID}")
+    print(f"📋 Admin Commands:")
+    print(f"   • /check_payments - View all pending payments")
+    print(f"   • /announce_winner - Announce winner manually")
+    
     app.run_polling()
 
 if __name__ == "__main__":
