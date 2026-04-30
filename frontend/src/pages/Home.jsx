@@ -77,8 +77,8 @@ const Home = ({ userId, isAdmin }) => {
   const [winners, setWinners] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [page] = useState(1);
+  const [searchQuery] = useState('');
   const [referralStats, setReferralStats] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
   const [gameActive, setGameActive] = useState(true);
@@ -203,12 +203,6 @@ const Home = ({ userId, isAdmin }) => {
     setCurrentSelectedNumber(number);
     alert(`Number ${number} selected! Please upload payment.`);
   };
-
-  const handleSearch = () => {
-    setPage(1);
-    loadDashboard();
-  };
-
   const getNumberPrice = () => gameConfig?.price_per_number || 100;
   const getGameRound = () => gameConfig?.round || gameConfig?.game_id || '?';
 
@@ -515,21 +509,6 @@ const Home = ({ userId, isAdmin }) => {
             </div>
           </motion.div>
         )}
-
-        {/* Search */}
-        <div className="flex gap-2">
-          <input
-            type="number"
-            placeholder="Search number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-          />
-          <button onClick={handleSearch} className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-5 py-2 rounded-full hover:scale-105 transition-all">
-            🔍
-          </button>
-        </div>
-
         {/* Number Grid */}
         <NumberGrid
           selectedNumbers={selectedNumbers}
