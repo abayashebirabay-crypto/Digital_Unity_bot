@@ -36,7 +36,11 @@ app = FastAPI(title="Digital Unity Mini App API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+    "https://digital-unity-bot.vercel.app",
+    "http://localhost:3000", 
+    "http://localhost:5173"
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -907,65 +911,24 @@ async def add_ngrok_bypass_header(request: Request, call_next):
     response.headers["ngrok-skip-browser-warning"] = "true"
     return response
 
-# ============ FRONTEND SERVING ============
 
-import os
-is_dev_mode = os.getenv("WEB_APP_URL", "").startswith("http://localhost:3000")
+# ============ API-ONLY MODE (Frontend on Vercel) ============
 
-if is_dev_mode:
-    print("⚠️ Development mode detected - React will be served from http://localhost:3000")
-    print("   Make sure to run: cd frontend && npm start")
-    
-    @app.get("/")
-    async def serve_dev_frontend():
-        return JSONResponse({
-            "message": "Development mode active",
-            "react_dev_server": "http://localhost:3000",
-            "api_server": "http://localhost:8000"
-        })
-    
-    @app.get("/{full_path:path}")
-    async def serve_dev_fallback(full_path: str):
-        if full_path.startswith("api/"):
-            raise HTTPException(status_code=404)
-        return JSONResponse({
-            "message": "Development mode - Please use React dev server at http://localhost:3000",
-            "path": full_path
-        })
+@app.get("/")
+async def root():
+    """API root endpoint - frontend is on Vercel"""
+    return JSONResponse({
+        "message": "Digital Unity API Server",
+        "frontend_url": "https://digital-unity-bot.vercel.app",
+        "status": "running"
+    })
 
-else:
-    REACT_BUILD_DIR = Path(__file__).resolve().parent / "frontend" / "build"
-    
-    if REACT_BUILD_DIR.exists() and (REACT_BUILD_DIR / "index.html").exists():
-        print("✅ Serving React build from:", REACT_BUILD_DIR)
-        
-        from fastapi.staticfiles import StaticFiles
-        
-        static_dir = REACT_BUILD_DIR / "static"
-        if static_dir.exists():
-            app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-        
-        @app.get("/{full_path:path}")
-        async def serve_react(full_path: str):
-            if full_path.startswith("api/") or full_path.startswith("_next/"):
-                raise HTTPException(status_code=404)
-            index_path = REACT_BUILD_DIR / "index.html"
-            if index_path.exists():
-                return FileResponse(str(index_path))
-            return FileResponse(str(index_path))
-        
-        @app.get("/")
-        async def serve_root():
-            index_path = REACT_BUILD_DIR / "index.html"
-            if index_path.exists():
-                return FileResponse(str(index_path))
-            return JSONResponse({"error": "index.html not found"}, status_code=404)
-    else:
-        print("⚠️ React build not found, using original index.html")
-        
-        @app.get("/")
-        async def serve_frontend():
-            index_path = BASE_DIR / "index.html"
-            if index_path.exists():
-                return FileResponse(str(index_path))
-            return JSONResponse({"error": "index.html not found"}, status_code=404)
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    """Catch all non-API routes"""
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404)
+    return JSONResponse({
+        "message": "API server only",
+        "frontend_url": "https://digital-unity-bot.vercel.app"
+    })
