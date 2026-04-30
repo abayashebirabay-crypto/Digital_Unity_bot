@@ -17,23 +17,22 @@ def _extract_referrer_from_start(start_param: str):
             return int(raw)
     return None
 
+
 def build_launch_keyboard(user_id: int):
-    # Use startapp for Mini App deep link
-    deep_link = f"https://t.me/{BOT_USERNAME}?startapp=ref_{user_id}"
-    
-    # Pass user_id to the web app so React can identify the user
+    # Use 'start' for referral, 'startapp' for Mini App
+    deep_link = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}"
     web_app_url_with_user = f"{WEB_APP_URL}?user_id={user_id}"
-    
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🚀 Launch Mini App", web_app=WebAppInfo(url=web_app_url_with_user))],
-        [InlineKeyboardButton("🎁 Invite Friends", url=deep_link)],
-        [InlineKeyboardButton("📤 Share Link", url=f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start=ref_{user_id}&text=Join%20me%20on%20Digital%20Unity%20Campus%20Voting!")]
-    ])
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("🚀 Launch Mini App", web_app=WebAppInfo(url=web_app_url_with_user))],
+            [InlineKeyboardButton("🎁 Invite Friends", url=deep_link)],
+        ]
+    )
 
 
 def build_mini_app_url(user_id: int):
+    # Use 'startapp' for Mini App deep link
     return f"https://t.me/{BOT_USERNAME}?startapp=ref_{user_id}"
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -161,6 +160,8 @@ async def referral_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Please register first with /start")
         return
     
+    deep_link = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}"
+    
     message = (
         f"🔗 *Your Referral Stats*\n\n"
         f"📋 Referral Code: `{user.get('referral_code')}`\n"
@@ -171,15 +172,16 @@ async def referral_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• When they register, you get points\n"
         f"• Points can be redeemed for prizes!\n\n"
         f"🔗 Your invite link:\n"
-        f"`https://t.me/{BOT_USERNAME}?start=ref_{user_id}`"
+        f"`{deep_link}`"
     )
     
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📤 Share Link", url=f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start=ref_{user_id}&text=Join%20me%20on%20Digital%20Unity%20Campus%20Voting!")]
+        [InlineKeyboardButton("📤 Share Link", url=f"https://t.me/share/url?url={deep_link}&text=Join%20me%20on%20Digital%20Unity%20Campus%20Voting!")]
     ])
     
     await update.message.reply_text(message, parse_mode='Markdown', reply_markup=keyboard)
 
+    
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Upload payment screenshot here, then admin will review.\n"
