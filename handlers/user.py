@@ -19,20 +19,12 @@ def _extract_referrer_from_start(start_param: str):
 
 
 def build_launch_keyboard(user_id: int):
-    # Use 'start' for referral, 'startapp' for Mini App
-    deep_link = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}"
     web_app_url_with_user = f"{WEB_APP_URL}?user_id={user_id}"
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("🚀 Launch Mini App", web_app=WebAppInfo(url=web_app_url_with_user))],
-            [InlineKeyboardButton("🎁 Invite Friends", url=deep_link)],
         ]
     )
-
-
-def build_mini_app_url(user_id: int):
-    # Use 'startapp' for Mini App deep link
-    return f"https://t.me/{BOT_USERNAME}?startapp=ref_{user_id}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -41,15 +33,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referrer_id = _extract_referrer_from_start(start_param)
 
     existing = users_collection.find_one({"telegram_id": user.id})
+    
     if existing and existing.get("phone_number") and existing.get("location_text"):
         mark_user_active(user.id)
+        # Only ONE message with ONLY Launch Mini App button
         await update.message.reply_text(
             "Welcome back to Digital Unity.\n\nTap below to open your dashboard.",
             reply_markup=build_launch_keyboard(user.id),
         )
-        await update.message.reply_text(f"Direct Mini App link:\n{build_mini_app_url(user.id)}")
         return ConversationHandler.END
 
+    # New user registration flow
     context.user_data["registration"] = {
         "username": user.username or f"user_{user.id}",
         "phone_number": None,
@@ -181,7 +175,7 @@ async def referral_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(message, parse_mode='Markdown', reply_markup=keyboard)
 
-    
+
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Upload payment screenshot here, then admin will review.\n"
@@ -215,14 +209,6 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Payment: {user.get('payment_status', 'none').upper()}",
         reply_markup=build_launch_keyboard(update.effective_user.id),
     )
-    await update.message.reply_text(f"Shareable Mini App link:\n{build_mini_app_url(update.effective_user.id)}")
-
-
-async def app_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        f"Open Mini App:\n{build_mini_app_url(update.effective_user.id)}",
-        reply_markup=build_launch_keyboard(update.effective_user.id),
-    )
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -246,4 +232,3 @@ pay_handler = CommandHandler("pay", pay)
 payment_handler = CommandHandler("payment", pay)
 status_handler = CommandHandler("status", status)
 profile_handler = CommandHandler("profile", profile)
-app_handler = CommandHandler("app", app_link)
