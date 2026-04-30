@@ -1,3 +1,4 @@
+import os
 import asyncio
 import sys
 import logging
@@ -5,6 +6,14 @@ import traceback
 from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from config import TOKEN, ADMIN_ID
+
+# Print startup info for debugging
+print("=== BOT STARTING ===")
+print(f"Python version: {sys.version}")
+print(f"BOT_TOKEN set: {bool(os.getenv('BOT_TOKEN'))}")
+print(f"MONGO_URL set: {bool(os.getenv('MONGO_URL'))}")
+print(f"ADMIN_ID: {os.getenv('ADMIN_ID')}")
+print("=== END STARTUP CHECK ===")
 
 # Fix for event loop issues on different platforms
 if sys.platform == 'win32':
@@ -54,8 +63,10 @@ async def error_handler(update, context):
 
 def main():
     if not TOKEN or TOKEN == "":
+        print("❌ BOT_TOKEN is not set!")
         raise SystemExit("❌ BOT_TOKEN is not set.")
     
+    print("🚀 Building application...")
     app = Application.builder().token(TOKEN).build()
     
     # Add handlers
@@ -82,7 +93,13 @@ def main():
     print(f"   • /check_payments - View all pending payments")
     print(f"   • /announce_winner - Announce winner manually")
     
+    # Start polling (this runs forever)
     app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        traceback.print_exc()
+        sys.exit(1)
