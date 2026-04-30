@@ -91,6 +91,8 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         print(f"Error: {e}")
         await update.message.reply_text("❌ An error occurred.")
+
+        
 async def approve_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle admin approval of payment"""
     query = update.callback_query
