@@ -551,10 +551,15 @@ async def admin_stats(admin_id: int = Query(...)):
 @app.get("/api/uploads/{filename}")
 async def get_uploaded_image(filename: str):
     """Serve uploaded payment images"""
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    import os
+    
     file_path = Path(UPLOAD_DIR) / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Image not found")
     return FileResponse(file_path, media_type="image/jpeg")
+
 
 @app.get("/api/admin/pending-payments")
 async def admin_pending_payments(admin_id: int = Query(...)):

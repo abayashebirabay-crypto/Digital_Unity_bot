@@ -53,7 +53,8 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                     f"Number: {payment['number']}\n"
                     f"Amount: {payment['amount']} ETB\n"
                     f"Phone: {user.get('phone_number', 'N/A')}\n"
-                    f"Payment ID: {payment['payment_id']}"
+                    f"Payment ID: {payment['payment_id']}\n"
+                    f"Image URL: {payment.get('file_path', 'N/A')}"
                 )
                 
                 keyboard = InlineKeyboardMarkup([
@@ -64,12 +65,24 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                 ])
                 
                 file_path = payment.get("file_path")
+
+                if file_path:
+                    file_path = file_path.replace("\\", "/")
+
                 if file_path and os.path.exists(file_path):
-                    with open(file_path, 'rb') as f:
-                        await context.bot.send_photo(
+                    try:
+                        with open(file_path, 'rb') as f:
+                            await context.bot.send_photo(
+                                chat_id=user_id,
+                                photo=f,
+                                caption=message_text,
+                                reply_markup=keyboard
+                            )
+                    except Exception as e:
+                        print("Error sending photo:", e)
+                        await context.bot.send_message(
                             chat_id=user_id,
-                            photo=f,
-                            caption=message_text,
+                            text=message_text,
                             reply_markup=keyboard
                         )
                 else:

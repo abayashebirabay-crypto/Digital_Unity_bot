@@ -79,7 +79,8 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
     file = await context.bot.get_file(file_id)
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_path = os.path.join(UPLOAD_DIR, f"{payment_id}.jpg")
-    await file.download_to_drive(file_path)
+    print("UPLOAD_DIR:", UPLOAD_DIR)
+    await file.download_to_drive(custom_path=file_path)
 
     payment_data = {
         "payment_id": payment_id,
@@ -134,7 +135,7 @@ async def payment_photo_handler(update: Update, context: ContextTypes.DEFAULT_TY
         with open(file_path, 'rb') as f:
             await context.bot.send_photo(
                 chat_id=ADMIN_ID,
-                photo=f,
+                photo=file_id,
                 caption=(
                     f"💰 *New Payment Received!*\n\n"
                     f"👤 User: @{user.get('username', 'unknown')}\n"
