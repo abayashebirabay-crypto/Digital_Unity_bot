@@ -1,19 +1,19 @@
 import os
 from typing import Final
 
-TOKEN: Final = os.getenv("BOT_TOKEN", "8664076774:AAHdZZvOPwgVKpJR0bTzOJ1P8Ynswv1jtYQ")
+# Bot Configuration - USE ENVIRONMENT VARIABLES
+TOKEN: Final = os.getenv("BOT_TOKEN", "")
 ADMIN_ID: Final = int(os.getenv("ADMIN_ID", "1296141395"))
-MONGO_URL: Final = os.getenv(
-    "MONGO_URL",
-    "mongodb+srv://abeyashebir:pOv4fI2dlf4j4UnM@cluster0.mryt6.mongodb.net/digital_unity",
-)
-DB_NAME: Final = os.getenv("DB_NAME", "digital_unity")
-
-# Public mini app URL (must be https in production)
-# Public mini app URL (must be https in production)
-WEB_APP_URL = "https://blot-animal-matcher.ngrok-free.dev"  # Use YOUR port number
 BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "@DigitalUnity_bot")
 
+# Database Configuration
+MONGO_URL: Final = os.getenv("MONGO_URL", "")
+DB_NAME: Final = os.getenv("DB_NAME", "digital_unity")
+
+# Web App URL - REMOVE hardcoded ngrok URL
+WEB_APP_URL: Final = os.getenv("WEB_APP_URL", "https://digital-unity-bot.vercel.app/")
+
+# File Upload Configuration
 UPLOAD_DIR: Final = os.getenv("UPLOAD_DIR", "uploads")
 WINNER_TOP_LIMIT: Final = int(os.getenv("WINNER_TOP_LIMIT", "10"))
 
@@ -24,3 +24,9 @@ LUCKY_NUMBER_PRICE_ETB: Final = int(os.getenv("LUCKY_NUMBER_PRICE_ETB", "100"))
 
 # Referral setup
 REFERRAL_POINTS_PER_USER: Final = int(os.getenv("REFERRAL_POINTS_PER_USER", "10"))
+
+# Validate required environment variables
+if not TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is required")
+if not MONGO_URL:
+    raise ValueError("MONGO_URL environment variable is required")
