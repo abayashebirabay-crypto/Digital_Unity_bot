@@ -14,8 +14,6 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
     try:
         user_id = update.effective_user.id
         
-        print(f"🔍 /check_payments command received from user: {user_id}")
-        
         if user_id != ADMIN_ID:
             await update.message.reply_text("❌ Admin only command")
             return
@@ -34,8 +32,6 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
             }
         ))
         
-        print(f"📊 Found {len(pending_payments)} pending payments")
-        
         if not pending_payments:
             await update.message.reply_text("📭 No pending payments at the moment.")
             return
@@ -44,7 +40,6 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
             try:
                 user = users_collection.find_one({"telegram_id": payment["telegram_id"]})
                 
-                # Plain text message (NO markdown)
                 message_text = (
                     f"💰 PENDING PAYMENT\n\n"
                     f"User: @{user.get('username', 'unknown')}\n"
@@ -53,8 +48,7 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                     f"Number: {payment['number']}\n"
                     f"Amount: {payment['amount']} ETB\n"
                     f"Phone: {user.get('phone_number', 'N/A')}\n"
-                    f"Payment ID: {payment['payment_id']}\n"
-                    f"Image URL: {payment.get('file_path', 'N/A')}"
+                    f"Payment ID: {payment['payment_id']}"
                 )
                 
                 keyboard = InlineKeyboardMarkup([
@@ -64,13 +58,19 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                     ]
                 ])
                 
-                file_path = payment.get("file_path")
-
-                if file_path:
-                    file_path = file_path.replace("\\", "/")
-
-                if file_path and os.path.exists(file_path):
-                    try:
+                # PRIORITY: Use file_id from bot (works everywhere)
+                file_id = payment.get("file_id")
+                if file_id:
+                    await context.bot.send_photo(
+                        chat_id=user_id,
+                        photo=file_id,
+                        caption=message_text,
+                        reply_markup=keyboard
+                    )
+                else:
+                    # Fallback: Try local file path
+                    file_path = payment.get("file_path")
+                    if file_path and os.path.exists(file_path):
                         with open(file_path, 'rb') as f:
                             await context.bot.send_photo(
                                 chat_id=user_id,
@@ -78,30 +78,19 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                                 caption=message_text,
                                 reply_markup=keyboard
                             )
-                    except Exception as e:
-                        print("Error sending photo:", e)
+                    else:
                         await context.bot.send_message(
                             chat_id=user_id,
                             text=message_text,
                             reply_markup=keyboard
                         )
-                else:
-                    await context.bot.send_message(
-                        chat_id=user_id,
-                        text=message_text,
-                        reply_markup=keyboard
-                    )
             except Exception as e:
-                print(f"Error sending payment {payment.get('payment_id')}: {e}")
-                traceback.print_exc()
+                print(f"Error sending payment: {e}")
                 continue
                 
     except Exception as e:
-        print(f"Error in check_payments_command: {e}")
-        traceback.print_exc()
-        await update.message.reply_text("❌ An error occurred while fetching payments.")
-
-
+        print(f"Error: {e}")
+        await update.message.reply_text("❌ An error occurred.")
 async def approve_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle admin approval of payment"""
     query = update.callback_query

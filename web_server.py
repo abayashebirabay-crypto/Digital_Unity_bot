@@ -1,4 +1,5 @@
 import os
+import requests
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -341,13 +342,33 @@ async def submit_payment_web(
                 "message": f"You already have a pending payment for number {number}"
             })
 
-        # Save file
+        # Save file locally
         ext = Path(file.filename or "proof.jpg").suffix or ".jpg"
         filename = f"{uuid.uuid4().hex}{ext}"
         file_path = str(Path(UPLOAD_DIR) / filename)
         content = await file.read()
         with open(file_path, "wb") as out:
             out.write(content)
+
+        # ALSO SEND TO BOT TO GET FILE_ID
+        file_id = None
+        
+        try:
+            # Send photo to bot admin to get file_id
+            bot_token = os.getenv("BOT_TOKEN")
+            send_photo_url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+            
+            with open(file_path, 'rb') as f:
+                files = {'photo': f}
+                data = {'chat_id': ADMIN_ID, 'caption': f"Payment from user {user_id} for number {number}"}
+                response = requests.post(send_photo_url, data=data, files=files)
+                result = response.json()
+                
+                if result.get('ok'):
+                    file_id = result['result']['photo'][-1]['file_id']
+                    print(f"✅ Got file_id from bot: {file_id}")
+        except Exception as bot_error:
+            print(f"⚠️ Could not send to bot: {bot_error}")
 
         # Create payment record with status pending
         payment_data = {
@@ -357,6 +378,7 @@ async def submit_payment_web(
             "number": number,
             "amount": price_per_number,
             "file_path": file_path,
+            "file_id": file_id,  # Save the file_id from bot
             "status": "pending",
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
@@ -365,7 +387,7 @@ async def submit_payment_web(
         }
         payments_collection.insert_one(payment_data)
         
-        # Add to temp_selected_numbers (temporary selection before approval)
+        # Add to temp_selected_numbers
         temp_selections = user.get("temp_selected_numbers", [])
         if number not in temp_selections:
             temp_selections.append(number)
@@ -390,7 +412,7 @@ async def submit_payment_web(
         print(f"❌ ERROR in payment submission: {e}")
         traceback.print_exc()
         return JSONResponse({"success": False, "message": f"Server error: {str(e)}"}, status_code=500)
-
+    
 
 @app.get("/api/winners")
 async def winners(game_id: Optional[int] = None):
