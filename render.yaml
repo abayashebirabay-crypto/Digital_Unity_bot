@@ -1,0 +1,56 @@
+services:
+  # Web API Service
+  - type: web
+    name: digital-unity-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn web_server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: BOT_TOKEN
+        value: 8664076774:AAHdZZvOPwgVKpJR0bTzOJ1P8Ynswv1jtYQ
+      - key: ADMIN_ID
+        value: 1296141395
+      - key: BOT_USERNAME
+        value: "@DigitalUnity_bot"
+      - key: MONGO_URL
+        value: mongodb+srv://abeyashebir:pOv4fI2dlf4j4UnM@cluster0.mryt6.mongodb.net/digital_unity
+      - key: DB_NAME
+        value: digital_unity
+      - key: WEB_APP_URL
+        value: https://digital-unity-bot.vercel.app
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: WINNER_TOP_LIMIT
+        value: "10"
+      - key: LUCKY_NUMBER_PRICE_ETB
+        value: "100"
+      - key: REFERRAL_POINTS_PER_USER
+        value: "10"
+
+  # Bot Worker Service
+  - type: worker
+    name: digital-unity-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        value: 8664076774:AAHdZZvOPwgVKpJR0bTzOJ1P8Ynswv1jtYQ
+      - key: ADMIN_ID
+        value: 1296141395
+      - key: BOT_USERNAME
+        value: "@DigitalUnity_bot"
+      - key: MONGO_URL
+        value: mongodb+srv://abeyashebir:pOv4fI2dlf4j4UnM@cluster0.mryt6.mongodb.net/digital_unity
+      - key: DB_NAME
+        value: digital_unity
+      - key: WEB_APP_URL
+        value: https://digital-unity-bot.vercel.app
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: WINNER_TOP_LIMIT
+        value: "10"
+      - key: LUCKY_NUMBER_PRICE_ETB
+        value: "100"
+      - key: REFERRAL_POINTS_PER_USER
+        value: "10"

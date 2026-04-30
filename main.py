@@ -1,8 +1,14 @@
+import asyncio
+import sys
 import logging
 import traceback
 from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 from config import TOKEN, ADMIN_ID
+
+# Fix for event loop issues on different platforms
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from handlers.user import (
     app_handler,
@@ -16,8 +22,8 @@ from handlers.user import (
 from handlers.admin import (
     approve_handler, 
     reject_handler, 
-    announce_winner_handler,  # Note: this is the handler, not the command function
-    check_payments_handler    # This is the CommandHandler object
+    announce_winner_handler,
+    check_payments_handler
 )
 from handlers.payment import photo_handler
 
@@ -60,7 +66,7 @@ def main():
     app.add_handler(profile_handler)
     app.add_handler(app_handler)
     
-    # Admin commands - these are CommandHandler objects
+    # Admin commands
     app.add_handler(announce_winner_handler)
     app.add_handler(check_payments_handler)
     
