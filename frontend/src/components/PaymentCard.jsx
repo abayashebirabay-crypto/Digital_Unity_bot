@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { uploadPayment } from '../services/api';
+import { motion } from 'framer-motion';
 
 const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   // Guard clause
   if (!selectedNumber || !gameConfig) {
@@ -15,7 +17,13 @@ const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) =
   const currentRound = gameConfig.round || gameConfig.game_id || '?';
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      // Create preview URL
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+    }
   };
 
   const handleSubmit = async () => {
@@ -45,6 +53,8 @@ const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) =
       
       if (response.data.success) {
         toast.success(`Payment submitted for Round #${currentRound}! Waiting for approval.`);
+        // Clear preview URL
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setTimeout(() => {
           onPaymentSuccess();
         }, 2000);
@@ -57,65 +67,95 @@ const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) =
     } finally {
       setUploading(false);
       setFile(null);
-      const fileInput = document.getElementById('fileInput');
+      setPreviewUrl(null);
+      const fileInput = document.getElementById('paymentFileInput');
       if (fileInput) fileInput.value = '';
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-lg mb-4">
-      <h3 className="text-lg font-bold text-purple-700 mb-4">💳 Make Payment - Round #{currentRound}</h3>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 mb-4 border border-white/20 shadow-xl"
+    >
+      <h3 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+        💳 Make Payment - Round #{currentRound}
+      </h3>
       
       {selectedNumber && (
-        <div className="bg-gray-100 rounded-xl p-3 text-center font-semibold text-gray-700 mb-4">
-          Selected: <strong className="text-purple-600">{selectedNumber}</strong> | 
-          Amount: <strong className="text-green-600">{pricePerNumber} ETB</strong>
+        <div className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-xl p-3 text-center backdrop-blur-sm mb-4">
+          <span className="text-white/70">Selected Number: </span>
+          <span className="text-2xl font-bold text-purple-300">{selectedNumber}</span>
+          <div className="text-sm text-white/60 mt-1">
+            Amount: <span className="text-green-400 font-semibold">{pricePerNumber} ETB</span>
+          </div>
         </div>
       )}
       
-      <div className="bg-gray-50 rounded-xl p-4 mb-4">
-        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-          <span>🏦 Bank:</span>
-          <strong>Commercial Bank of Ethiopia</strong>
+      {/* Bank Details */}
+      <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
+        <div className="flex justify-between items-center py-2 border-b border-white/10">
+          <span className="text-white/60">🏦 Bank:</span>
+          <strong className="text-white">Commercial Bank of Ethiopia</strong>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-200">
-          <span>📋 Account:</span>
-          <strong>100013456789</strong>
+        <div className="flex justify-between items-center py-2 border-b border-white/10">
+          <span className="text-white/60">📋 Account:</span>
+          <strong className="text-white">100013456789</strong>
         </div>
         <div className="flex justify-between items-center py-2">
-          <span>👤 Name:</span>
-          <strong>Digital Unity</strong>
+          <span className="text-white/60">👤 Name:</span>
+          <strong className="text-white">Digital Unity</strong>
         </div>
       </div>
       
+      {/* Upload Area */}
       <div 
         onClick={() => {
-          const fileInput = document.getElementById('fileInput');
+          const fileInput = document.getElementById('paymentFileInput');
           if (fileInput) fileInput.click();
         }}
-        className="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all"
+        className="border-2 border-dashed border-purple-500/50 rounded-xl p-5 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-500/10 transition-all backdrop-blur-sm"
       >
-        📸 Click to upload payment screenshot
+        {previewUrl ? (
+          <div className="relative">
+            <img 
+              src={previewUrl} 
+              alt="Payment preview" 
+              className="max-h-32 mx-auto rounded-lg object-contain"
+            />
+            <div className="text-sm text-purple-300 mt-2">Tap to change image</div>
+          </div>
+        ) : (
+          <>
+            <div className="text-4xl mb-2">📸</div>
+            <div className="text-white/80">Click to upload payment screenshot</div>
+            <div className="text-xs text-white/40 mt-1">JPG, PNG (Max 5MB)</div>
+          </>
+        )}
       </div>
       
       <input 
-        id="fileInput" 
+        id="paymentFileInput" 
         type="file" 
         accept="image/*" 
         className="hidden" 
         onChange={handleFileChange} 
       />
       
-      {file && (
-        <div className="text-sm text-gray-600 text-center mt-3">
+      {file && !previewUrl && (
+        <div className="text-sm text-purple-300 text-center mt-3">
           Selected: {file.name}
         </div>
       )}
       
-      <button 
+      <motion.button 
         onClick={handleSubmit} 
-        disabled={uploading || !selectedNumber}
-        className="w-full mt-5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={uploading || !selectedNumber || !file}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full mt-5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         {uploading ? (
           <span className="flex items-center justify-center gap-2">
@@ -126,10 +166,16 @@ const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) =
             Submitting...
           </span>
         ) : (
-          'Submit Payment'
+          '💸 Submit Payment'
         )}
-      </button>
-    </div>
+      </motion.button>
+
+      {/* Instructions */}
+      <div className="mt-4 text-xs text-white/40 text-center">
+        <p>📌 Make sure the screenshot is clear and shows transaction details</p>
+        <p>⏳ Payment will be reviewed by admin within 24 hours</p>
+      </div>
+    </motion.div>
   );
 };
 

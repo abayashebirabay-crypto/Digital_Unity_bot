@@ -2,11 +2,71 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getUserDashboard, getLuckyNumbers, getWinners, getAnnouncements, getReferralStats, getGameConfig } from '../services/api';
 import PaymentCard from '../components/PaymentCard';
 import ReferralCard from '../components/ReferralCard';
-import ProfileCard from '../components/ProfileCard';
 import NumberGrid from '../components/NumberGrid';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const MIN_LUCKY_NUMBER = 1;
 const MAX_LUCKY_NUMBER = 999;
+// Logo Component - Digital Unity Brand
+const Logo = ({ size = "md" }) => {
+  const sizeClasses = {
+    sm: "w-12 h-12",
+    md: "w-16 h-16",
+    lg: "w-24 h-24"
+  };
+  
+  return (
+    <div className={`${sizeClasses[size]} bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl flex items-center justify-center shadow-xl`}>
+      <span className="text-white font-bold text-2xl">DU</span>
+    </div>
+  );
+};
+
+// Loading Spinner with Logo
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-pulse mb-6">
+        <Logo size="lg" />
+      </div>
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-white mx-auto mb-4"></div>
+      <p className="text-white text-lg font-medium">Loading Dashboard...</p>
+      <p className="text-white/50 text-sm mt-2">Digital Unity</p>
+    </div>
+  </div>
+);
+
+// Error Message Component
+const ErrorMessage = ({ message, onRetry }) => (
+  <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center p-4">
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 max-w-md text-center border border-white/20">
+      <div className="text-6xl mb-4">❌</div>
+      <p className="text-white mb-4">{message}</p>
+      <button 
+        onClick={onRetry} 
+        className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-6 py-2 rounded-full font-semibold hover:scale-105 transition-all"
+      >
+        Try Again
+      </button>
+    </div>
+  </div>
+);
+
+// Not Registered Component
+const NotRegistered = ({ botUsername }) => (
+  <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center p-4">
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 max-w-md text-center border border-white/20">
+      <Logo size="lg" />
+      <p className="text-white mt-4 mb-6">Please send /start to the bot first</p>
+      <a 
+        href={`https://t.me/${botUsername}`} 
+        className="inline-block bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-6 py-2 rounded-full font-semibold hover:scale-105 transition-all"
+      >
+        Open Bot
+      </a>
+    </div>
+  </div>
+);
 
 const Home = ({ userId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
@@ -27,10 +87,11 @@ const Home = ({ userId, isAdmin }) => {
   const [rejectionMessage, setRejectionMessage] = useState('');
   const [minNumber, setMinNumber] = useState(MIN_LUCKY_NUMBER);
   const [maxNumber, setMaxNumber] = useState(MAX_LUCKY_NUMBER);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   const botUsername = 'DigitalUnity_bot';
+  const referralLink = `https://t.me/${botUsername}?start=ref_${userId}`;
 
-  // Define loadDashboard with useCallback to prevent recreation
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
@@ -89,41 +150,32 @@ const Home = ({ userId, isAdmin }) => {
     }
   }, []);
 
-  // Listen for game creation events from admin panel
   useEffect(() => {
     const handleGameCreated = () => {
       console.log('Game created event received, refreshing...');
       setRefreshTrigger(prev => prev + 1);
     };
-  
     window.addEventListener('gameCreated', handleGameCreated);
     return () => window.removeEventListener('gameCreated', handleGameCreated);
   }, []);
 
-  // Watch for payment rejection
   useEffect(() => {
     if (userData?.payment_status === 'rejected') {
       setPaymentRejected(true);
       setRejectionMessage(userData?.rejection_reason || 'Your payment was rejected. Please select a new number and upload payment again.');
       setCurrentSelectedNumber(null);
-      
       const timer = setTimeout(() => {
         setPaymentRejected(false);
         setRejectionMessage('');
       }, 10000);
-      
       return () => clearTimeout(timer);
     }
   }, [userData?.payment_status, userData?.rejection_reason]);
 
-  // Reload when game config changes
   useEffect(() => {
-    if (gameConfig) {
-      loadDashboard();
-    }
+    if (gameConfig) loadDashboard();
   }, [gameConfig, loadDashboard]);
 
-  // Initial load and refresh triggers
   useEffect(() => {
     loadDashboard();
     loadGameConfig();
@@ -134,26 +186,22 @@ const Home = ({ userId, isAdmin }) => {
       alert('No active game round. Please wait for admin to start a new game.');
       return;
     }
-
     if (selectedNumbers.includes(number)) {
-      alert(`You already own number ${number}! You can buy more numbers.`);
+      alert(`You already own number ${number}!`);
       return;
     }
-
     if (pendingNumbers.includes(number)) {
-      alert(`You already have a pending payment for number ${number}. Please wait for approval.`);
+      alert(`You already have a pending payment for number ${number}.`);
       return;
     }
-
     if (window.takenNumbers[number] && window.takenNumbers[number] !== userId) {
       alert(`Number ${number} is already taken by another user.`);
       return;
     }
-
     setPaymentRejected(false);
     setRejectionMessage('');
     setCurrentSelectedNumber(number);
-    alert(`Number ${number} selected! Please upload payment to confirm this number.`);
+    alert(`Number ${number} selected! Please upload payment.`);
   };
 
   const handleSearch = () => {
@@ -171,122 +219,223 @@ const Home = ({ userId, isAdmin }) => {
     alert('Please select a new lucky number from the grid above.');
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      alert('Referral link copied! Share it with friends.');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   const AdminButton = () => {
     if (!isAdmin) return null;
     return (
-      <button
+      <motion.button
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => window.location.href = '/admin'}
-        className="fixed top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-xl shadow-lg hover:bg-purple-700 transition-all z-50"
+        className="fixed top-4 right-4 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2 text-sm font-semibold"
       >
-        👑 Admin Panel
-      </button>
+        👑 Admin
+      </motion.button>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 max-w-md text-center">
-          <p className="text-red-500 mb-4">❌ {error}</p>
-          <button onClick={loadDashboard} className="bg-purple-600 text-white px-6 py-2 rounded-xl">Retry</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 max-w-md text-center">
-          <p className="text-gray-700">❌ Please send /start to bot first</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} onRetry={loadDashboard} />;
+  if (!userData) return <NotRegistered botUsername={botUsername} />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-indigo-700 p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] pb-20">
       <AdminButton />
 
-      <div className="max-w-md mx-auto space-y-4">
-        <ProfileCard
-          userData={userData}
-          selectedNumber={selectedNumbers.length > 0 ? selectedNumbers.join(', ') : 'None'}
-          referralStats={referralStats}
-        />
+      {/* Share Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowShareModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0A192F] rounded-2xl p-6 max-w-sm w-full border border-[#3B82F6]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-4">
+                <Logo size="sm" />
+                <h3 className="text-white text-xl font-bold mt-2">Invite Friends</h3>
+                <p className="text-[#60A5FA] text-sm mt-1">Share your referral link</p>
+              </div>
+              <div className="bg-[#1E3A8A]/50 rounded-xl p-3 mb-4">
+                <p className="text-[#60A5FA] text-xs break-all">{referralLink}</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={copyToClipboard} className="flex-1 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white py-2 rounded-full font-semibold">📋 Copy Link</button>
+                <button onClick={() => setShowShareModal(false)} className="flex-1 bg-gray-700 text-white py-2 rounded-full font-semibold">Close</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <div className={`rounded-2xl p-3 text-center ${gameActive ? 'bg-white/20 text-white' : 'bg-red-500/80 text-white'}`}>
-          <div className="text-xs opacity-80">Current Game Round</div>
-          <div className="text-2xl font-bold">#{getGameRound()}</div>
-          <div className="text-xs opacity-80 mt-1">Price per number: {getNumberPrice()} ETB</div>
-          {!gameActive && (
-            <div className="mt-2 text-sm font-bold bg-yellow-500 text-black px-2 py-1 rounded-lg">
-              ⚠️ NO ACTIVE GAME - Waiting for admin to start new round
+      <div className="max-w-md mx-auto px-4 pt-6 space-y-4">
+        {/* Header with Logo */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="flex justify-center mb-2"
+        >
+          <Logo size="md" />
+        </motion.div>
+
+        {/* Welcome Card - Digital Unity Brand */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-5 text-white shadow-xl"
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="text-xs opacity-80">Welcome back,</div>
+              <div className="text-xl font-bold">@{userData?.username || 'User'}</div>
             </div>
-          )}
-        </div>
+            <div className="text-right">
+              <div className="text-xs opacity-80">Round</div>
+              <div className="text-2xl font-bold">#{getGameRound()}</div>
+            </div>
+          </div>
+        </motion.div>
 
+        {/* Game Status Card */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className={`rounded-2xl p-4 text-center ${
+            gameActive 
+              ? 'bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/50' 
+              : 'bg-red-500/20 backdrop-blur-sm border border-red-500/50'
+          }`}
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="text-white/80 text-xs">Price per Number</div>
+              <div className="text-white font-bold text-xl">{getNumberPrice()} ETB</div>
+            </div>
+            <div className="text-3xl">🎲</div>
+            <div>
+              <div className="text-white/80 text-xs">Status</div>
+              <div className={`font-bold text-lg ${gameActive ? 'text-emerald-400' : 'text-red-400'}`}>
+                {gameActive ? 'ACTIVE' : 'INACTIVE'}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* My Numbers Section */}
         {(selectedNumbers.length > 0 || pendingNumbers.length > 0) && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3">
-            <div className="text-white text-xs font-semibold mb-2">📌 MY NUMBERS</div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+          >
+            <div className="text-white text-xs font-semibold mb-3 flex items-center gap-2">
+              <span>📌</span> MY NUMBERS
+            </div>
             <div className="flex flex-wrap gap-2">
               {selectedNumbers.map(num => (
-                <span key={num} className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">✅ {num}</span>
+                <motion.span
+                  key={num}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+                >
+                  ✅ {num}
+                </motion.span>
               ))}
               {pendingNumbers.map(num => (
-                <span key={num} className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold">⏳ {num}</span>
+                <motion.span
+                  key={num}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+                >
+                  ⏳ {num}
+                </motion.span>
               ))}
             </div>
-            <div className="text-white/60 text-xs mt-2">
+            <div className="text-white/50 text-xs mt-3">
               {selectedNumbers.length} approved | {pendingNumbers.length} pending
             </div>
-          </div>
+          </motion.div>
         )}
 
+        {/* Payment Rejected Alert */}
         {paymentRejected && (
-          <div className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center text-red-200 border border-red-500 animate-pulse">
-            <div className="text-sm font-bold mb-1">❌ PAYMENT REJECTED</div>
-            <div className="text-sm">{rejectionMessage}</div>
-            <div className="text-xs mt-2">Please select a new number and upload payment again.</div>
-          </div>
+          <motion.div
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 100, opacity: 0 }}
+            className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-red-500"
+          >
+            <div className="text-red-300 font-bold mb-1">❌ PAYMENT REJECTED</div>
+            <div className="text-red-200 text-sm">{rejectionMessage}</div>
+          </motion.div>
         )}
 
+        {/* Pending Selection */}
         {currentSelectedNumber && !paymentRejected && (
-          <div className="bg-yellow-500/20 backdrop-blur-sm rounded-2xl p-3 text-center text-yellow-200 border border-yellow-500">
-            <div className="text-sm font-bold">⏳ Pending Selection</div>
-            <div>You have selected number <strong>{currentSelectedNumber}</strong></div>
-            <div className="text-xs mt-1">Upload payment to confirm this number</div>
-          </div>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-amber-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-amber-500"
+          >
+            <div className="text-amber-300 font-bold">⏳ Pending Selection</div>
+            <div className="text-white text-lg">Number <strong className="text-2xl">{currentSelectedNumber}</strong></div>
+            <div className="text-amber-200/80 text-xs mt-1">Upload payment to confirm</div>
+          </motion.div>
         )}
 
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl p-6 text-center text-white shadow-lg">
+        {/* Referral Points Card - Brand Blue */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-6 text-center text-white shadow-xl cursor-pointer hover:scale-105 transition-all"
+          onClick={() => setShowShareModal(true)}
+        >
           <div className="text-sm opacity-90">💰 Total Referral Points</div>
           <div className="text-5xl font-bold">{referralStats?.referral_points || userData?.referral_points || 0}</div>
-        </div>
+          <div className="text-xs mt-2 opacity-80">👇 Tap to invite friends</div>
+        </motion.div>
 
-        {/* Winners Board Section */}
-        <div className="bg-white rounded-2xl p-5 shadow-lg">
-          <h2 className="text-lg font-bold text-center text-purple-700 mb-3">🏆 Winners Board</h2>
+        {/* Winners Board */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white/10 backdrop-blur-sm rounded-2xl p-5"
+        >
+          <h2 className="text-lg font-bold text-center text-white mb-3">🏆 Winners Board</h2>
           
           {winners?.current_round_winners?.length > 0 && (
             <div className="mb-4">
               <div className="text-center mb-2">
-                <span className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                <span className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-3 py-1 rounded-full text-xs font-bold">
                   Round #{winners.current_round_winners[0]?.game_id || '?'} - COMPLETED
                 </span>
               </div>
-              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl p-4 text-center text-white mb-3">
+              <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl p-4 text-center text-white mb-3">
                 {winners.current_winner ? (
                   <>
                     <div className="text-sm">🏆 GRAND WINNER 🏆</div>
@@ -302,17 +451,17 @@ const Home = ({ userId, isAdmin }) => {
               
               {winners.current_round_winners.length > 1 && (
                 <div className="mt-2">
-                  <div className="text-xs font-semibold text-gray-500 mb-2">🏅 ALL PLACES - ROUND #{winners.current_round_winners[0]?.game_id}</div>
+                  <div className="text-xs font-semibold text-white/60 mb-2">🏅 ALL PLACES</div>
                   <div className="space-y-1">
                     {winners.current_round_winners.slice(1).map((winner, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 rounded-lg p-2">
+                      <div key={idx} className="flex justify-between items-center text-sm bg-white/5 rounded-lg p-2">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 text-center font-bold text-gray-600">{winner.place_display}</span>
-                          <span>@{winner.username}</span>
+                          <span className="w-6 text-center font-bold text-white/70">{winner.place_display}</span>
+                          <span className="text-white/80">@{winner.username}</span>
                         </div>
                         <div>
-                          <span className="font-medium text-purple-600">{winner.winning_number}</span>
-                          <span className="text-xs text-gray-400 ml-2">{winner.prize_amount} ETB</span>
+                          <span className="font-medium text-[#60A5FA]">{winner.winning_number}</span>
+                          <span className="text-xs text-white/50 ml-2">{winner.prize_amount} ETB</span>
                         </div>
                       </div>
                     ))}
@@ -322,66 +471,66 @@ const Home = ({ userId, isAdmin }) => {
             </div>
           )}
 
-          {winners?.recent_winners?.length > 0 && winners.current_round_winners?.length > 0 && (
-            <div className="border-t border-gray-200 pt-3 mt-3">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">📜 Previous Rounds History</h3>
-            </div>
-          )}
-          
           {winners?.recent_winners?.length > 0 && (
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {winners.recent_winners.map((winner, idx) => (
-                (!winners.current_round_winners?.some(w => w.telegram_id === winner.telegram_id && w.game_id === winner.game_id)) && (
-                  <div key={idx} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xs font-bold">
-                        {winner.winning_number}
-                      </span>
-                      <div>
-                        <div>@{winner.username}</div>
-                        <div className="flex gap-2 text-xs">
-                          <span className="text-gray-400">Round #{winner.game_id}</span>
-                          <span className="text-purple-500 font-semibold">{winner.place_display}</span>
-                        </div>
-                      </div>
+              {winners.recent_winners.slice(0, 10).map((winner, idx) => (
+                <div key={idx} className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">
+                      {winner.winning_number}
                     </div>
-                    <div className="text-right">
-                      <div className="text-green-600 font-semibold">{winner.prize_amount} ETB</div>
-                      <div className="text-xs text-gray-400">{new Date(winner.created_at).toLocaleDateString()}</div>
+                    <div>
+                      <div className="text-white/90">@{winner.username}</div>
+                      <div className="text-xs text-white/40">Round #{winner.game_id}</div>
                     </div>
                   </div>
-                )
+                  <div className="text-right">
+                    <div className="text-emerald-400 font-semibold">{winner.prize_amount} ETB</div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
           
           {(!winners?.recent_winners || winners.recent_winners.length === 0) && (
-            <div className="text-center text-gray-400 py-4">No winners yet. First round starting soon!</div>
+            <div className="text-center text-white/40 py-4">No winners yet. First round starting soon!</div>
           )}
-        </div>
+        </motion.div>
 
+        {/* Announcements */}
         {announcements.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-lg">
-            <h2 className="text-lg font-bold text-center text-purple-700 mb-3">📢 Announcements</h2>
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+          >
+            <h2 className="text-white text-sm font-semibold mb-2">📢 Announcements</h2>
             <div className="space-y-2">
               {announcements.slice(0, 5).map((ann, idx) => (
-                <div key={idx} className="text-sm text-gray-600 border-b border-gray-100 pb-2">📢 {ann.text}</div>
+                <div key={idx} className="text-sm text-white/80 border-b border-white/10 pb-2">
+                  📢 {ann.text}
+                </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
+        {/* Search */}
         <div className="flex gap-2">
           <input
             type="number"
             placeholder="Search number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="flex-1 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
           />
-          <button onClick={handleSearch} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-4 py-2 rounded-xl hover:scale-105 transition-all">🔍</button>
+          <button onClick={handleSearch} className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-5 py-2 rounded-full hover:scale-105 transition-all">
+            🔍
+          </button>
         </div>
 
+        {/* Number Grid */}
         <NumberGrid
           selectedNumbers={selectedNumbers}
           pendingNumbers={pendingNumbers}
@@ -395,22 +544,25 @@ const Home = ({ userId, isAdmin }) => {
           maxNumber={maxNumber}
         />
 
+        {/* Game Not Active Message */}
         {!gameActive && (
-          <div className="bg-yellow-500/20 backdrop-blur-sm rounded-2xl p-4 text-center text-yellow-200 border border-yellow-500">
-            <div className="font-bold mb-2">🎮 Game Not Active</div>
-            <div className="text-sm">A new game round hasn't started yet.</div>
-            <div className="text-xs mt-2">Please check back later or contact admin.</div>
+          <div className="bg-amber-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-amber-500">
+            <div className="font-bold text-amber-300 mb-2">🎮 Game Not Active</div>
+            <div className="text-white/80 text-sm">Please check back later or contact admin.</div>
           </div>
         )}
 
+        {/* Rejected Payment Button */}
         {userData?.payment_status === 'rejected' && !currentSelectedNumber && !paymentRejected && (
-          <div className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center text-red-200 border border-red-500">
-            <div className="font-bold mb-2">❌ Payment Rejected</div>
-            <div className="text-sm mb-3">Your payment was rejected. Please select a new number.</div>
-            <button onClick={handleRetrySelection} className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-yellow-400 transition-all">🔄 Select New Number</button>
+          <div className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-red-500">
+            <div className="font-bold text-red-300 mb-2">❌ Payment Rejected</div>
+            <button onClick={handleRetrySelection} className="bg-amber-500 text-black px-4 py-2 rounded-full font-semibold">
+              🔄 Select New Number
+            </button>
           </div>
         )}
 
+        {/* Payment Card */}
         {gameActive && currentSelectedNumber && gameConfig && !paymentRejected && (
           <PaymentCard
             userId={userId}
