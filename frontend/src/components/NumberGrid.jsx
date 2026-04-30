@@ -14,7 +14,7 @@ const NumberGrid = ({
 }) => {
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tempSelected, setTempSelected] = useState([]);
+  const [tempSelected,] = useState([]);
   const itemsPerPage = 16;
 
   const generateNumbers = () => {
