@@ -1,7 +1,11 @@
 import os
 from typing import Final
+from dotenv import load_dotenv
 
-# Bot Configuration - USE ENVIRONMENT VARIABLES
+# Load .env file for local development
+load_dotenv()
+
+# Bot Configuration
 TOKEN: Final = os.getenv("BOT_TOKEN", "")
 ADMIN_ID: Final = int(os.getenv("ADMIN_ID", "1296141395"))
 BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "@DigitalUnity_bot")
@@ -10,7 +14,7 @@ BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "@DigitalUnity_bot")
 MONGO_URL: Final = os.getenv("MONGO_URL", "")
 DB_NAME: Final = os.getenv("DB_NAME", "digital_unity")
 
-# Web App URL - REMOVE hardcoded ngrok URL
+# Web App URL
 WEB_APP_URL: Final = os.getenv("WEB_APP_URL", "https://digital-unity-bot.vercel.app/")
 
 # File Upload Configuration
@@ -30,3 +34,5 @@ if not TOKEN:
     raise ValueError("BOT_TOKEN environment variable is required")
 if not MONGO_URL:
     raise ValueError("MONGO_URL environment variable is required")
+
+print(f"✅ Configuration loaded successfully")
