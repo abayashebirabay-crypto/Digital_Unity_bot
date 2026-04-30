@@ -44,15 +44,16 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
             try:
                 user = users_collection.find_one({"telegram_id": payment["telegram_id"]})
                 
-                caption = (
-                    f"💰 *Pending Payment*\n\n"
-                    f"👤 User: @{user.get('username', 'unknown')}\n"
-                    f"🆔 ID: `{payment['telegram_id']}`\n"
-                    f"🎮 Game Round: #{payment['game_id']}\n"
-                    f"🔢 Number: {payment['number']}\n"
-                    f"💰 Amount: {payment['amount']} ETB\n"
-                    f"📞 Phone: {user.get('phone_number', 'N/A')}\n"
-                    f"🆔 Payment ID: `{payment['payment_id']}`"
+                # Plain text message (NO markdown)
+                message_text = (
+                    f"💰 PENDING PAYMENT\n\n"
+                    f"User: @{user.get('username', 'unknown')}\n"
+                    f"ID: {payment['telegram_id']}\n"
+                    f"Game Round: #{payment['game_id']}\n"
+                    f"Number: {payment['number']}\n"
+                    f"Amount: {payment['amount']} ETB\n"
+                    f"Phone: {user.get('phone_number', 'N/A')}\n"
+                    f"Payment ID: {payment['payment_id']}"
                 )
                 
                 keyboard = InlineKeyboardMarkup([
@@ -68,16 +69,14 @@ async def check_payments_command(update: Update, context: ContextTypes.DEFAULT_T
                         await context.bot.send_photo(
                             chat_id=user_id,
                             photo=f,
-                            caption=caption,
-                            reply_markup=keyboard,
-                            parse_mode='Markdown'
+                            caption=message_text,
+                            reply_markup=keyboard
                         )
                 else:
                     await context.bot.send_message(
                         chat_id=user_id,
-                        text=caption,
-                        reply_markup=keyboard,
-                        parse_mode='Markdown'
+                        text=message_text,
+                        reply_markup=keyboard
                     )
             except Exception as e:
                 print(f"Error sending payment {payment.get('payment_id')}: {e}")
@@ -166,26 +165,25 @@ async def approve_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     price_per_number = active_game.get("price_per_number", 100)
 
+    # Update message (NO markdown)
+    new_caption = query.message.caption + f"\n\n✅ APPROVED by @{query.from_user.username}\nNumber: {approved_number}\nAmount: {price_per_number} ETB"
+    
     try:
         await query.edit_message_caption(
-            caption=query.message.caption + f"\n\n✅ APPROVED by @{query.from_user.username}\n🎲 Number: {approved_number}\n💰 Amount: {price_per_number} ETB",
+            caption=new_caption,
             reply_markup=None
         )
     except Exception:
         await query.edit_message_text(
-            text=query.message.text + f"\n\n✅ APPROVED by @{query.from_user.username}\n🎲 Number: {approved_number}\n💰 Amount: {price_per_number} ETB",
+            text=new_caption,
             reply_markup=None
         )
 
+    # Notify user (NO markdown)
     try:
         await context.bot.send_message(
             chat_id=user_id,
-            text=f"✅ *Payment Approved!*\n\n"
-                 f"🎮 Game Round: #{game_id}\n"
-                 f"🔢 Your lucky number: *{approved_number}*\n"
-                 f"💰 Amount: {price_per_number} ETB\n\n"
-                 f"Your number is now locked. Good luck! 🍀",
-            parse_mode='Markdown'
+            text=f"✅ PAYMENT APPROVED!\n\nGame Round: #{game_id}\nYour lucky number: {approved_number}\nAmount: {price_per_number} ETB\n\nYour number is now locked. Good luck! 🍀"
         )
     except Exception as e:
         print(f"Could not notify user: {e}")
@@ -247,25 +245,25 @@ async def reject_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         )
 
+    # Update message (NO markdown)
+    new_caption = query.message.caption + f"\n\n❌ REJECTED by @{query.from_user.username}"
+    
     try:
         await query.edit_message_caption(
-            caption=query.message.caption + f"\n\n❌ REJECTED by @{query.from_user.username}",
+            caption=new_caption,
             reply_markup=None
         )
     except Exception:
         await query.edit_message_text(
-            text=query.message.text + f"\n\n❌ REJECTED by @{query.from_user.username}",
+            text=new_caption,
             reply_markup=None
         )
 
+    # Notify user (NO markdown)
     try:
         await context.bot.send_message(
             chat_id=user_id,
-            text=f"❌ *Payment Rejected*\n\n"
-                 f"🎮 Game Round: #{game_id}\n"
-                 f"🔢 Number {rejected_number} is now free.\n\n"
-                 f"Please submit again with a clear screenshot.",
-            parse_mode='Markdown'
+            text=f"❌ PAYMENT REJECTED\n\nGame Round: #{game_id}\nNumber {rejected_number} is now free.\n\nPlease submit again with a clear screenshot."
         )
     except Exception as e:
         print(f"Could not notify user: {e}")
@@ -285,14 +283,14 @@ async def announce_winner_command(update: Update, context: ContextTypes.DEFAULT_
         return
 
     text = (
-        "🏆 *WINNER ANNOUNCED!* 🏆\n\n"
-        f"🎮 Game Round: #{winner['game_id']}\n"
-        f"👤 Username: @{winner.get('username', 'unknown')}\n"
-        f"🔢 Lucky number: *{winner['winning_number']}*\n\n"
-        f"✨ Round closed. New round started.\n"
-        f"💰 All users need to pay again for the next round."
+        f"🏆 WINNER ANNOUNCED! 🏆\n\n"
+        f"Game Round: #{winner['game_id']}\n"
+        f"Username: @{winner.get('username', 'unknown')}\n"
+        f"Lucky number: {winner['winning_number']}\n\n"
+        f"Round closed. New round started.\n"
+        f"All users need to pay again for the next round."
     )
-    await update.message.reply_text(text, parse_mode='Markdown')
+    await update.message.reply_text(text)
 
 
 # IMPORTANT: These are the handlers that get exported
