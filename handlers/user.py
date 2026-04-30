@@ -175,6 +175,11 @@ async def referral_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(message, parse_mode='Markdown', reply_markup=keyboard)
 
+async def app_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Open Mini App:",
+        reply_markup=build_launch_keyboard(update.effective_user.id),
+    )
 
 async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -210,7 +215,6 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_launch_keyboard(update.effective_user.id),
     )
 
-
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Registration cancelled. Use /start to begin again.")
     return ConversationHandler.END
@@ -232,3 +236,4 @@ pay_handler = CommandHandler("pay", pay)
 payment_handler = CommandHandler("payment", pay)
 status_handler = CommandHandler("status", status)
 profile_handler = CommandHandler("profile", profile)
+app_handler = CommandHandler("app", app_link)
