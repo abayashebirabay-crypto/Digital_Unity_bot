@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 // Use localhost backend API directly
-const API_BASE_URL = "https://digital-unity-bot.onrender.com";
+const API_BASE_URL = "digital-unity-api-production-cd2c.up.railway.app";
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("pending");
