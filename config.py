@@ -8,7 +8,7 @@ load_dotenv()
 # Bot Configuration
 TOKEN: Final = os.getenv("BOT_TOKEN", "")
 ADMIN_ID: Final = int(os.getenv("ADMIN_ID", "1296141395"))
-BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "@DigitalUnity_bot")
+BOT_USERNAME: Final = os.getenv("BOT_USERNAME", "DigitalUnity_bot")
 
 # Database Configuration
 MONGO_URL: Final = os.getenv("MONGO_URL", "")
