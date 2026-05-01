@@ -1,28 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { getUserDashboard, getLuckyNumbers, getWinners, getAnnouncements, getReferralStats, getGameConfig } from '../services/api';
-import PaymentCard from '../components/PaymentCard';
-import ReferralCard from '../components/ReferralCard';
-import NumberGrid from '../components/NumberGrid';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  getUserDashboard,
+  getLuckyNumbers,
+  getWinners,
+  getAnnouncements,
+  getReferralStats,
+  getGameConfig,
+} from "../services/api";
+import PaymentCard from "../components/PaymentCard";
+import ReferralCard from "../components/ReferralCard";
+import NumberGrid from "../components/NumberGrid";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MIN_LUCKY_NUMBER = 1;
 const MAX_LUCKY_NUMBER = 999;
-// Logo Component - Digital Unity Brand
+
+// Logo Component
 const Logo = ({ size = "md" }) => {
   const sizeClasses = {
     sm: "w-12 h-12",
     md: "w-16 h-16",
-    lg: "w-24 h-24"
+    lg: "w-24 h-24",
   };
-  
+
   return (
-    <div className={`${sizeClasses[size]} bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl flex items-center justify-center shadow-xl`}>
+    <div
+      className={`${sizeClasses[size]} bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl flex items-center justify-center shadow-xl`}
+    >
       <span className="text-white font-bold text-2xl">DU</span>
     </div>
   );
 };
 
-// Loading Spinner with Logo
+// Loading Spinner
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center">
     <div className="text-center">
@@ -31,42 +41,92 @@ const LoadingSpinner = () => (
       </div>
       <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-white mx-auto mb-4"></div>
       <p className="text-white text-lg font-medium">Loading Dashboard...</p>
-      <p className="text-white/50 text-sm mt-2">Digital Unity</p>
     </div>
   </div>
 );
 
-// Error Message Component
-const ErrorMessage = ({ message, onRetry }) => (
-  <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center p-4">
-    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 max-w-md text-center border border-white/20">
-      <div className="text-6xl mb-4">❌</div>
-      <p className="text-white mb-4">{message}</p>
-      <button 
-        onClick={onRetry} 
-        className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-6 py-2 rounded-full font-semibold hover:scale-105 transition-all"
-      >
-        Try Again
-      </button>
-    </div>
-  </div>
-);
+// Payment Methods Toggle Component
+const PaymentMethods = () => {
+  const [activeMethod, setActiveMethod] = useState("cbe");
+  const [copied, setCopied] = useState(false);
 
-// Not Registered Component
-const NotRegistered = ({ botUsername }) => (
-  <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] flex items-center justify-center p-4">
-    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 max-w-md text-center border border-white/20">
-      <Logo size="lg" />
-      <p className="text-white mt-4 mb-6">Please send /start to the bot first</p>
-      <a 
-        href={`https://t.me/${botUsername}`} 
-        className="inline-block bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-6 py-2 rounded-full font-semibold hover:scale-105 transition-all"
-      >
-        Open Bot
-      </a>
+  const methods = {
+    cbe: {
+      name: "Commercial Bank of Ethiopia",
+      account: "1000304777633",
+      name_on_account: "Abay Ashebir",
+      icon: "🏦",
+    },
+    telebirr: {
+      name: "Telebirr",
+      account: "0934478593",
+      name_on_account: "Abay Ashebir",
+      icon: "📱",
+    },
+  };
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  return (
+    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4">
+      <h3 className="text-white text-sm font-semibold mb-3 text-center">
+        💳 Payment Methods
+      </h3>
+
+      {/* Toggle Buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setActiveMethod("cbe")}
+          className={`flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
+            activeMethod === "cbe"
+              ? "bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white shadow-lg"
+              : "bg-white/10 text-white/70 hover:bg-white/20"
+          }`}
+        >
+          🏦 CBE
+        </button>
+        <button
+          onClick={() => setActiveMethod("telebirr")}
+          className={`flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
+            activeMethod === "telebirr"
+              ? "bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white shadow-lg"
+              : "bg-white/10 text-white/70 hover:bg-white/20"
+          }`}
+        >
+          📱 Telebirr
+        </button>
+      </div>
+
+      {/* Active Method Details */}
+      <div className="bg-[#0A192F]/50 rounded-xl p-4 text-center">
+        <div className="text-3xl mb-2">{methods[activeMethod].icon}</div>
+        <div className="text-white/70 text-xs mb-1">
+          {methods[activeMethod].name}
+        </div>
+        <div className="text-white/70 text-sm mb-2">
+          {methods[activeMethod].name_on_account}
+        </div>
+        <div className="text-white font-bold text-lg mb-2">
+          {methods[activeMethod].account}
+        </div>
+        <button
+          onClick={() => copyToClipboard(methods[activeMethod].account)}
+          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-4 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-105"
+        >
+          {copied ? "✓ Copied!" : "📋 Copy Account"}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Home = ({ userId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
@@ -77,19 +137,17 @@ const Home = ({ userId, isAdmin }) => {
   const [winners, setWinners] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [error, setError] = useState(null);
-  const [page] = useState(1);
-  const [searchQuery] = useState('');
   const [referralStats, setReferralStats] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
   const [gameActive, setGameActive] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [paymentRejected, setPaymentRejected] = useState(false);
-  const [rejectionMessage, setRejectionMessage] = useState('');
+  const [rejectionMessage, setRejectionMessage] = useState("");
   const [minNumber, setMinNumber] = useState(MIN_LUCKY_NUMBER);
   const [maxNumber, setMaxNumber] = useState(MAX_LUCKY_NUMBER);
   const [showShareModal, setShowShareModal] = useState(false);
-  
-  const botUsername = 'DigitalUnity_bot';
+
+  const botUsername = "DigitalUnity_bot";
   const referralLink = `https://t.me/${botUsername}?start=ref_${userId}`;
 
   const loadDashboard = useCallback(async () => {
@@ -97,12 +155,11 @@ const Home = ({ userId, isAdmin }) => {
       setLoading(true);
       setError(null);
       setPaymentRejected(false);
-      setRejectionMessage('');
+      setRejectionMessage("");
 
       const userRes = await getUserDashboard(userId);
-
       if (!userRes.data.user) {
-        setError('Not registered. Please send /start to bot first.');
+        setError("Not registered. Please send /start to bot first.");
         setLoading(false);
         return;
       }
@@ -114,11 +171,9 @@ const Home = ({ userId, isAdmin }) => {
       try {
         const referralRes = await getReferralStats(userId);
         setReferralStats(referralRes.data);
-      } catch (err) {
-        console.error('Error loading referral stats:', err);
-      }
+      } catch (err) {}
 
-      const numbersRes = await getLuckyNumbers(userId, page, 16, searchQuery);
+      const numbersRes = await getLuckyNumbers(userId, 1, 16, "");
       window.takenNumbers = numbersRes.data.taken_numbers || {};
 
       const winnersRes = await getWinners();
@@ -126,48 +181,45 @@ const Home = ({ userId, isAdmin }) => {
 
       const announcementsRes = await getAnnouncements();
       setAnnouncements(announcementsRes.data.items || []);
-
     } catch (err) {
-      console.error('Error loading dashboard:', err);
+      console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [userId, page, searchQuery]);
+  }, [userId]);
 
   const loadGameConfig = useCallback(async () => {
     try {
       const configRes = await getGameConfig();
       const configData = configRes.data;
-      
       setGameConfig(configData);
       setGameActive(configData?.is_active === true);
       setMinNumber(configData?.min_number || MIN_LUCKY_NUMBER);
       setMaxNumber(configData?.max_number || MAX_LUCKY_NUMBER);
     } catch (err) {
-      console.error('Error loading game config:', err);
+      console.error(err);
       setGameActive(false);
     }
   }, []);
 
   useEffect(() => {
-    const handleGameCreated = () => {
-      console.log('Game created event received, refreshing...');
-      setRefreshTrigger(prev => prev + 1);
-    };
-    window.addEventListener('gameCreated', handleGameCreated);
-    return () => window.removeEventListener('gameCreated', handleGameCreated);
+    const handleGameCreated = () => setRefreshTrigger((prev) => prev + 1);
+    window.addEventListener("gameCreated", handleGameCreated);
+    return () => window.removeEventListener("gameCreated", handleGameCreated);
   }, []);
 
   useEffect(() => {
-    if (userData?.payment_status === 'rejected') {
+    if (userData?.payment_status === "rejected") {
       setPaymentRejected(true);
-      setRejectionMessage(userData?.rejection_reason || 'Your payment was rejected. Please select a new number and upload payment again.');
+      setRejectionMessage(
+        userData?.rejection_reason || "Payment rejected. Select a new number.",
+      );
       setCurrentSelectedNumber(null);
       const timer = setTimeout(() => {
         setPaymentRejected(false);
-        setRejectionMessage('');
-      }, 10000);
+        setRejectionMessage("");
+      }, 8000);
       return () => clearTimeout(timer);
     }
   }, [userData?.payment_status, userData?.rejection_reason]);
@@ -183,7 +235,7 @@ const Home = ({ userId, isAdmin }) => {
 
   const handleSelectNumber = async (number) => {
     if (!gameActive) {
-      alert('No active game round. Please wait for admin to start a new game.');
+      alert("No active game round.");
       return;
     }
     if (selectedNumbers.includes(number)) {
@@ -191,34 +243,31 @@ const Home = ({ userId, isAdmin }) => {
       return;
     }
     if (pendingNumbers.includes(number)) {
-      alert(`You already have a pending payment for number ${number}.`);
+      alert(`Pending payment for number ${number}.`);
       return;
     }
     if (window.takenNumbers[number] && window.takenNumbers[number] !== userId) {
-      alert(`Number ${number} is already taken by another user.`);
+      alert(`Number ${number} is taken.`);
       return;
     }
     setPaymentRejected(false);
-    setRejectionMessage('');
     setCurrentSelectedNumber(number);
-    alert(`Number ${number} selected! Please upload payment.`);
+    alert(`Number ${number} selected! Upload payment.`);
   };
-  const getNumberPrice = () => gameConfig?.price_per_number || 100;
-  const getGameRound = () => gameConfig?.round || gameConfig?.game_id || '?';
 
+  const getNumberPrice = () => gameConfig?.price_per_number || 100;
+  const getGameRound = () => gameConfig?.round || gameConfig?.game_id || "?";
   const handleRetrySelection = () => {
     setCurrentSelectedNumber(null);
     setPaymentRejected(false);
-    setRejectionMessage('');
-    alert('Please select a new lucky number from the grid above.');
   };
 
-  const copyToClipboard = async () => {
+  const copyReferralLink = async () => {
     try {
       await navigator.clipboard.writeText(referralLink);
-      alert('Referral link copied! Share it with friends.');
+      alert("Referral link copied!");
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error(err);
     }
   };
 
@@ -229,9 +278,8 @@ const Home = ({ userId, isAdmin }) => {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => window.location.href = '/admin'}
-        className="fixed top-4 right-4 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-4 py-2 rounded-full shadow-lg z-50 flex items-center gap-2 text-sm font-semibold"
+        onClick={() => (window.location.href = "/admin")}
+        className="fixed top-4 right-4 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-3 py-1.5 rounded-full shadow-lg z-50 text-xs font-semibold"
       >
         👑 Admin
       </motion.button>
@@ -239,8 +287,18 @@ const Home = ({ userId, isAdmin }) => {
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage message={error} onRetry={loadDashboard} />;
-  if (!userData) return <NotRegistered botUsername={botUsername} />;
+  if (error)
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A192F] to-[#3B82F6] flex items-center justify-center p-4 text-white text-center">
+        {error}
+      </div>
+    );
+  if (!userData)
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A192F] to-[#3B82F6] flex items-center justify-center p-4 text-white text-center">
+        Send /start to bot first
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A192F] via-[#1E3A8A] to-[#3B82F6] pb-20">
@@ -260,20 +318,33 @@ const Home = ({ userId, isAdmin }) => {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-[#0A192F] rounded-2xl p-6 max-w-sm w-full border border-[#3B82F6]"
+              className="bg-[#0A192F] rounded-2xl p-5 max-w-sm w-full border border-[#3B82F6]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-center mb-4">
+              <div className="text-center mb-3">
                 <Logo size="sm" />
-                <h3 className="text-white text-xl font-bold mt-2">Invite Friends</h3>
-                <p className="text-[#60A5FA] text-sm mt-1">Share your referral link</p>
+                <h3 className="text-white text-lg font-bold mt-2">
+                  Invite Friends
+                </h3>
               </div>
-              <div className="bg-[#1E3A8A]/50 rounded-xl p-3 mb-4">
-                <p className="text-[#60A5FA] text-xs break-all">{referralLink}</p>
+              <div className="bg-[#1E3A8A]/50 rounded-xl p-2 mb-3">
+                <p className="text-[#60A5FA] text-xs break-all">
+                  {referralLink}
+                </p>
               </div>
-              <div className="flex gap-3">
-                <button onClick={copyToClipboard} className="flex-1 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white py-2 rounded-full font-semibold">📋 Copy Link</button>
-                <button onClick={() => setShowShareModal(false)} className="flex-1 bg-gray-700 text-white py-2 rounded-full font-semibold">Close</button>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyReferralLink}
+                  className="flex-1 bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white py-2 rounded-full font-semibold text-sm"
+                >
+                  📋 Copy
+                </button>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="flex-1 bg-gray-700 text-white py-2 rounded-full font-semibold text-sm"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -281,26 +352,27 @@ const Home = ({ userId, isAdmin }) => {
       </AnimatePresence>
 
       <div className="max-w-md mx-auto px-4 pt-6 space-y-4">
-        {/* Header with Logo */}
+        {/* Logo */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex justify-center mb-2"
+          className="flex justify-center"
         >
           <Logo size="md" />
         </motion.div>
 
-        {/* Welcome Card - Digital Unity Brand */}
+        {/* Welcome Card */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-5 text-white shadow-xl"
+          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-4 text-white shadow-xl"
         >
           <div className="flex justify-between items-center">
             <div>
-              <div className="text-xs opacity-80">Welcome back,</div>
-              <div className="text-xl font-bold">@{userData?.username || 'User'}</div>
+              <div className="text-xs opacity-80">Welcome,</div>
+              <div className="text-lg font-bold">
+                @{userData?.username || "User"}
+              </div>
             </div>
             <div className="text-right">
               <div className="text-xs opacity-80">Round</div>
@@ -309,67 +381,66 @@ const Home = ({ userId, isAdmin }) => {
           </div>
         </motion.div>
 
-        {/* Game Status Card */}
+        {/* Game Status */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className={`rounded-2xl p-4 text-center ${
-            gameActive 
-              ? 'bg-emerald-500/20 backdrop-blur-sm border border-emerald-500/50' 
-              : 'bg-red-500/20 backdrop-blur-sm border border-red-500/50'
+          className={`rounded-2xl p-3 text-center ${
+            gameActive
+              ? "bg-emerald-500/20 border border-emerald-500/50"
+              : "bg-red-500/20 border border-red-500/50"
           }`}
         >
           <div className="flex justify-between items-center">
             <div>
-              <div className="text-white/80 text-xs">Price per Number</div>
-              <div className="text-white font-bold text-xl">{getNumberPrice()} ETB</div>
+              <div className="text-white/70 text-xs">Price</div>
+              <div className="text-white font-bold text-lg">
+                {getNumberPrice()} ETB
+              </div>
             </div>
-            <div className="text-3xl">🎲</div>
+            <div className="text-2xl">🎲</div>
             <div>
-              <div className="text-white/80 text-xs">Status</div>
-              <div className={`font-bold text-lg ${gameActive ? 'text-emerald-400' : 'text-red-400'}`}>
-                {gameActive ? 'ACTIVE' : 'INACTIVE'}
+              <div className="text-white/70 text-xs">Status</div>
+              <div
+                className={`font-bold ${gameActive ? "text-emerald-400" : "text-red-400"}`}
+              >
+                {gameActive ? "ACTIVE" : "INACTIVE"}
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* My Numbers Section */}
+        {/* My Numbers */}
         {(selectedNumbers.length > 0 || pendingNumbers.length > 0) && (
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+            className="bg-white/10 backdrop-blur-sm rounded-2xl p-3"
           >
-            <div className="text-white text-xs font-semibold mb-3 flex items-center gap-2">
-              <span>📌</span> MY NUMBERS
+            <div className="text-white text-xs font-semibold mb-2">
+              📌 MY NUMBERS
             </div>
-            <div className="flex flex-wrap gap-2">
-              {selectedNumbers.map(num => (
-                <motion.span
+            <div className="flex flex-wrap gap-1.5">
+              {selectedNumbers.map((num) => (
+                <span
                   key={num}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+                  className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold"
                 >
                   ✅ {num}
-                </motion.span>
+                </span>
               ))}
-              {pendingNumbers.map(num => (
-                <motion.span
+              {pendingNumbers.map((num) => (
+                <span
                   key={num}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+                  className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold"
                 >
                   ⏳ {num}
-                </motion.span>
+                </span>
               ))}
             </div>
-            <div className="text-white/50 text-xs mt-3">
-              {selectedNumbers.length} approved | {pendingNumbers.length} pending
+            <div className="text-white/40 text-xs mt-2">
+              {selectedNumbers.length} approved | {pendingNumbers.length}{" "}
+              pending
             </div>
           </motion.div>
         )}
@@ -379,11 +450,11 @@ const Home = ({ userId, isAdmin }) => {
           <motion.div
             initial={{ x: -100, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 100, opacity: 0 }}
-            className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-red-500"
+            className="bg-red-500/20 rounded-2xl p-3 text-center border border-red-500"
           >
-            <div className="text-red-300 font-bold mb-1">❌ PAYMENT REJECTED</div>
-            <div className="text-red-200 text-sm">{rejectionMessage}</div>
+            <div className="text-red-300 text-sm font-bold">
+              ❌ {rejectionMessage}
+            </div>
           </motion.div>
         )}
 
@@ -392,102 +463,100 @@ const Home = ({ userId, isAdmin }) => {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-amber-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-amber-500"
+            className="bg-amber-500/20 rounded-2xl p-3 text-center border border-amber-500"
           >
-            <div className="text-amber-300 font-bold">⏳ Pending Selection</div>
-            <div className="text-white text-lg">Number <strong className="text-2xl">{currentSelectedNumber}</strong></div>
-            <div className="text-amber-200/80 text-xs mt-1">Upload payment to confirm</div>
+            <div className="text-amber-300 text-sm font-bold">
+              Selected: {currentSelectedNumber}
+            </div>
+            <div className="text-white/70 text-xs">
+              Upload payment to confirm
+            </div>
           </motion.div>
         )}
 
-        {/* Referral Points Card - Brand Blue */}
+        {/* Payment Methods Toggle */}
+        <PaymentMethods />
+
+        {/* Referral Points */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-6 text-center text-white shadow-xl cursor-pointer hover:scale-105 transition-all"
+          className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-4 text-center text-white shadow-xl cursor-pointer hover:scale-105 transition-all"
           onClick={() => setShowShareModal(true)}
         >
-          <div className="text-sm opacity-90">💰 Total Referral Points</div>
-          <div className="text-5xl font-bold">{referralStats?.referral_points || userData?.referral_points || 0}</div>
-          <div className="text-xs mt-2 opacity-80">👇 Tap to invite friends</div>
+          <div className="text-xs opacity-90">💰 Referral Points</div>
+          <div className="text-3xl font-bold">
+            {referralStats?.referral_points || userData?.referral_points || 0}
+          </div>
+          <div className="text-xs mt-1 opacity-80">👇 Tap to invite</div>
         </motion.div>
 
-        {/* Winners Board */}
+        {/* Winners Board - Organized by Round */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white/10 backdrop-blur-sm rounded-2xl p-5"
+          className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
         >
-          <h2 className="text-lg font-bold text-center text-white mb-3">🏆 Winners Board</h2>
-          
-          {winners?.current_round_winners?.length > 0 && (
-            <div className="mb-4">
-              <div className="text-center mb-2">
-                <span className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-3 py-1 rounded-full text-xs font-bold">
-                  Round #{winners.current_round_winners[0]?.game_id || '?'} - COMPLETED
-                </span>
-              </div>
-              <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl p-4 text-center text-white mb-3">
-                {winners.current_winner ? (
-                  <>
-                    <div className="text-sm">🏆 GRAND WINNER 🏆</div>
-                    <div className="text-5xl font-bold my-2">{winners.current_winner.winning_number}</div>
-                    <div>@{winners.current_winner.username}</div>
-                    <div className="text-xs mt-1">Round #{winners.current_winner.game_id}</div>
-                    <div className="text-sm font-bold mt-1">Prize: {winners.current_winner.prize_amount} ETB</div>
-                  </>
-                ) : (
-                  <div>No winner yet for this round</div>
-                )}
-              </div>
-              
-              {winners.current_round_winners.length > 1 && (
-                <div className="mt-2">
-                  <div className="text-xs font-semibold text-white/60 mb-2">🏅 ALL PLACES</div>
-                  <div className="space-y-1">
-                    {winners.current_round_winners.slice(1).map((winner, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm bg-white/5 rounded-lg p-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 text-center font-bold text-white/70">{winner.place_display}</span>
-                          <span className="text-white/80">@{winner.username}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-[#60A5FA]">{winner.winning_number}</span>
-                          <span className="text-xs text-white/50 ml-2">{winner.prize_amount} ETB</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <h2 className="text-white text-sm font-bold text-center mb-3">
+            🏆 Winners Board
+          </h2>
 
-          {winners?.recent_winners?.length > 0 && (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {winners.recent_winners.slice(0, 10).map((winner, idx) => (
-                <div key={idx} className="flex justify-between items-center text-sm border-b border-white/10 pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">
-                      {winner.winning_number}
+          {winners?.winners_by_round &&
+          Object.keys(winners.winners_by_round).length > 0 ? (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {Object.entries(winners.winners_by_round)
+                .sort((a, b) => Number(b[0]) - Number(a[0]))
+                .map(([round, roundWinners]) => (
+                  <div key={round} className="bg-[#0A192F]/50 rounded-xl p-3">
+                    <div className="text-[#60A5FA] text-xs font-semibold mb-2 text-center border-b border-[#3B82F6]/30 pb-1">
+                      🎮 Round #{round}
                     </div>
-                    <div>
-                      <div className="text-white/90">@{winner.username}</div>
-                      <div className="text-xs text-white/40">Round #{winner.game_id}</div>
+                    <div className="space-y-1.5">
+                      {roundWinners.map((winner, idx) => (
+                        <div
+                          key={idx}
+                          className="flex justify-between items-center text-xs"
+                        >
+                          <div className="flex items-center gap-2 w-1/3">
+                            <span
+                              className={`font-bold ${
+                                winner.place === 1
+                                  ? "text-yellow-400"
+                                  : winner.place === 2
+                                    ? "text-gray-300"
+                                    : winner.place === 3
+                                      ? "text-amber-600"
+                                      : "text-white/60"
+                              }`}
+                            >
+                              {winner.place === 1
+                                ? "🥇"
+                                : winner.place === 2
+                                  ? "🥈"
+                                  : winner.place === 3
+                                    ? "🥉"
+                                    : `#${winner.place}`}
+                            </span>
+                            <span className="text-white/80 truncate">
+                              @{winner.username}
+                            </span>
+                          </div>
+                          <div className="text-emerald-400 font-bold w-1/4 text-center">
+                            {winner.winning_number}
+                          </div>
+                          <div className="text-white/50 text-right w-1/4">
+                            {winner.prize_amount} ETB
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-emerald-400 font-semibold">{winner.prize_amount} ETB</div>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
-          )}
-          
-          {(!winners?.recent_winners || winners.recent_winners.length === 0) && (
-            <div className="text-center text-white/40 py-4">No winners yet. First round starting soon!</div>
+          ) : (
+            <div className="text-center text-white/40 py-4 text-sm">
+              No winners yet. First round starting soon!
+            </div>
           )}
         </motion.div>
 
@@ -496,19 +565,21 @@ const Home = ({ userId, isAdmin }) => {
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white/10 backdrop-blur-sm rounded-2xl p-4"
+            className="bg-white/10 backdrop-blur-sm rounded-2xl p-3"
           >
-            <h2 className="text-white text-sm font-semibold mb-2">📢 Announcements</h2>
-            <div className="space-y-2">
-              {announcements.slice(0, 5).map((ann, idx) => (
-                <div key={idx} className="text-sm text-white/80 border-b border-white/10 pb-2">
+            <div className="text-white/70 text-xs font-semibold mb-1">
+              📢 Announcements
+            </div>
+            <div className="space-y-1 max-h-24 overflow-y-auto">
+              {announcements.slice(0, 3).map((ann, idx) => (
+                <div key={idx} className="text-white/60 text-xs">
                   📢 {ann.text}
                 </div>
               ))}
             </div>
           </motion.div>
         )}
+
         {/* Number Grid */}
         <NumberGrid
           selectedNumbers={selectedNumbers}
@@ -523,36 +594,42 @@ const Home = ({ userId, isAdmin }) => {
           maxNumber={maxNumber}
         />
 
-        {/* Game Not Active Message */}
+        {/* Game Not Active */}
         {!gameActive && (
-          <div className="bg-amber-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-amber-500">
-            <div className="font-bold text-amber-300 mb-2">🎮 Game Not Active</div>
-            <div className="text-white/80 text-sm">Please check back later or contact admin.</div>
+          <div className="bg-amber-500/20 rounded-2xl p-3 text-center border border-amber-500">
+            <div className="text-amber-300 text-sm">🎮 Game Not Active</div>
           </div>
         )}
 
-        {/* Rejected Payment Button */}
-        {userData?.payment_status === 'rejected' && !currentSelectedNumber && !paymentRejected && (
-          <div className="bg-red-500/20 backdrop-blur-sm rounded-2xl p-4 text-center border border-red-500">
-            <div className="font-bold text-red-300 mb-2">❌ Payment Rejected</div>
-            <button onClick={handleRetrySelection} className="bg-amber-500 text-black px-4 py-2 rounded-full font-semibold">
-              🔄 Select New Number
-            </button>
-          </div>
-        )}
+        {/* Rejected Payment Reset */}
+        {userData?.payment_status === "rejected" &&
+          !currentSelectedNumber &&
+          !paymentRejected && (
+            <div className="bg-red-500/20 rounded-2xl p-3 text-center border border-red-500">
+              <button
+                onClick={handleRetrySelection}
+                className="bg-amber-500 text-black px-4 py-1.5 rounded-full text-sm font-semibold"
+              >
+                🔄 Select New Number
+              </button>
+            </div>
+          )}
 
         {/* Payment Card */}
-        {gameActive && currentSelectedNumber && gameConfig && !paymentRejected && (
-          <PaymentCard
-            userId={userId}
-            selectedNumber={currentSelectedNumber}
-            gameConfig={gameConfig}
-            onPaymentSuccess={() => {
-              loadDashboard();
-              setCurrentSelectedNumber(null);
-            }}
-          />
-        )}
+        {gameActive &&
+          currentSelectedNumber &&
+          gameConfig &&
+          !paymentRejected && (
+            <PaymentCard
+              userId={userId}
+              selectedNumber={currentSelectedNumber}
+              gameConfig={gameConfig}
+              onPaymentSuccess={() => {
+                loadDashboard();
+                setCurrentSelectedNumber(null);
+              }}
+            />
+          )}
 
         <ReferralCard userId={userId} botUsername={botUsername} />
       </div>
