@@ -94,22 +94,6 @@ const PaymentCard = ({ userId, selectedNumber, gameConfig, onPaymentSuccess }) =
         </div>
       )}
       
-      {/* Bank Details */}
-      <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
-        <div className="flex justify-between items-center py-2 border-b border-white/10">
-          <span className="text-white/60">🏦 Bank:</span>
-          <strong className="text-white">Commercial Bank of Ethiopia</strong>
-        </div>
-        <div className="flex justify-between items-center py-2 border-b border-white/10">
-          <span className="text-white/60">📋 Account:</span>
-          <strong className="text-white">100013456789</strong>
-        </div>
-        <div className="flex justify-between items-center py-2">
-          <span className="text-white/60">👤 Name:</span>
-          <strong className="text-white">Digital Unity</strong>
-        </div>
-      </div>
-      
       {/* Upload Area */}
       <div 
         onClick={() => {

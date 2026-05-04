@@ -138,19 +138,7 @@ const ReferralCard = ({ userId, botUsername }) => {
               <span>Top referrers get special rewards</span>
             </li>
           </ul>
-        </div>
-
-        {/* Share Button */}
-        <motion.button 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setShowShareModal(true)}
-          className="w-full mt-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
-        >
-          📤 Share Link
-        </motion.button>
-
-        {/* Referral Points Info */}
+        </div> {/* Referral Points Info */}
         <div className="mt-3 text-center">
           <p className="text-xs text-white/30">
             💡 Earn {referralData.referral_points || 0} points for each friend who joins!
