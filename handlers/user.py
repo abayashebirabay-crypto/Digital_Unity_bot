@@ -2,7 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
 from config import ADMIN_ID, BOT_USERNAME, WEB_APP_URL
-from database import mark_user_active, users_collection
+from database import give_registration_bonus, init_wallet_for_user, mark_user_active, users_collection
 from services.game_service import upsert_user
 
 PHONE, LOCATION = range(2)
@@ -118,6 +118,8 @@ async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         location_text=reg["location_text"],
         invited_by=reg.get("invited_by"),
     )
+    init_wallet_for_user(update.effective_user.id)
+    give_registration_bonus(update.effective_user.id)
     context.user_data["registration"] = {}
 
     await update.message.reply_text(

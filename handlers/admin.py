@@ -6,6 +6,7 @@ import traceback
 
 from database import payments_collection, users_collection, get_active_game
 from config import ADMIN_ID, UPLOAD_DIR
+from database import give_referral_payment_bonus
 from services.game_service import announce_winner
 
 
@@ -168,6 +169,14 @@ async def approve_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     price_per_number = active_game.get("price_per_number", 100)
+    referrer_id = user.get("invited_by")
+    if referrer_id:
+        give_referral_payment_bonus(
+            referrer_id=referrer_id,
+            referred_user_id=user_id,
+            payment_amount=price_per_number,
+            game_id=game_id,
+        )
 
     # Update message (NO markdown)
     new_caption = query.message.caption + f"\n\n✅ APPROVED by @{query.from_user.username}\nNumber: {approved_number}\nAmount: {price_per_number} ETB"

@@ -1,6 +1,7 @@
 import React from 'react';
 import AdminPanel from './pages/AdminPanel';
 import Home from './pages/Home';
+import WalletPage from './pages/WalletPage';
 
 function App() {
   // Get Telegram user data
@@ -31,9 +32,14 @@ function App() {
   const isAdmin = userId === ADMIN_ID;
   const path = window.location.pathname;
   const showAdmin = path === '/admin' && isAdmin;
+  const showWallet = path === '/wallet';
 
   if (showAdmin) {
     return <AdminPanel />;
+  }
+
+  if (showWallet) {
+    return <WalletPage userId={userId} />;
   }
 
   return <Home userId={userId} isAdmin={isAdmin} />;

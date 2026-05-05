@@ -13,10 +13,8 @@ const NumberGrid = ({
   minNumber = 1,
   maxNumber = 16
 }) => {
-  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [tempSelected] = useState([]);
-  const itemsPerPage = 16;
 
   const generateNumbers = () => {
     const numbers = [];
@@ -67,9 +65,6 @@ const NumberGrid = ({
     !searchQuery || num.toString().includes(searchQuery)
   );
 
-  const paginatedNumbers = filteredNumbers.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-  const totalPages = Math.ceil(filteredNumbers.length / itemsPerPage);
-
   const handleNumberClick = (num, status) => {
     if (status === 'disabled') return;
     if (status === 'approved' || status === 'pending') {
@@ -119,10 +114,10 @@ const NumberGrid = ({
           className="flex-1 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
         />
         <button
-          onClick={() => setPage(1)}
+          onClick={() => setSearchQuery('')}
           className="bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white px-5 py-2 rounded-full hover:scale-105 transition-all shadow-lg"
         >
-          🔍
+          ✕
         </button>
       </div>
 
@@ -141,68 +136,39 @@ const NumberGrid = ({
         </div>
       )}
 
-      {/* Numbers Grid */}
-      <div className="grid grid-cols-4 gap-3">
-        <AnimatePresence>
-          {paginatedNumbers.map((num, idx) => {
-            const status = getNumberStatus(num);
-            return (
-              <motion.div
-                key={num}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: idx * 0.01 }}
-                whileTap={{ scale: status === 'available' ? 0.95 : 1 }}
-                onClick={() => handleNumberClick(num, status)}
-                className={`rounded-xl p-3 text-center transition-all duration-200 cursor-pointer ${getNumberStyle(status)}`}
-              >
-                <div className="text-xl font-bold">{num}</div>
-                <div className="text-[10px] mt-1 opacity-80">{pricePerNumber} ETB</div>
-                <div className="text-[10px] mt-1 font-semibold">
-                  {getNumberLabel(status)}
-                </div>
-                {status === 'pending' && (
-                  <div className="text-[9px] mt-1 text-amber-200/80">Awaiting Approval</div>
-                )}
-                {status === 'approved' && (
-                  <div className="text-[9px] mt-1 text-emerald-200/80">✓ Locked</div>
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-3 mt-5">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-            className={`px-4 py-2 rounded-full font-semibold transition-all ${
-              page <= 1
-                ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white hover:scale-105 shadow-lg'
-            }`}
-          >
-            ◀ Prev
-          </button>
-          <span className="text-white/70 font-medium text-sm">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-            className={`px-4 py-2 rounded-full font-semibold transition-all ${
-              page >= totalPages
-                ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-[#1E3A8A] to-[#3B82F6] text-white hover:scale-105 shadow-lg'
-            }`}
-          >
-            Next ▶
-          </button>
+      {/* Numbers Grid - Vertically scrollable (no pagination) */}
+      <div className="max-h-[28rem] overflow-y-auto pr-1">
+        <div className="grid grid-cols-4 gap-3">
+          <AnimatePresence>
+            {filteredNumbers.map((num, idx) => {
+              const status = getNumberStatus(num);
+              return (
+                <motion.div
+                  key={num}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: idx * 0.01 }}
+                  whileTap={{ scale: status === 'available' ? 0.95 : 1 }}
+                  onClick={() => handleNumberClick(num, status)}
+                  className={`rounded-xl p-3 text-center transition-all duration-200 cursor-pointer ${getNumberStyle(status)}`}
+                >
+                  <div className="text-xl font-bold">{num}</div>
+                  <div className="text-[10px] mt-1 opacity-80">{pricePerNumber} ETB</div>
+                  <div className="text-[10px] mt-1 font-semibold">
+                    {getNumberLabel(status)}
+                  </div>
+                  {status === 'pending' && (
+                    <div className="text-[9px] mt-1 text-amber-200/80">Awaiting Approval</div>
+                  )}
+                  {status === 'approved' && (
+                    <div className="text-[9px] mt-1 text-emerald-200/80">✓ Locked</div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
-      )}
+      </div>
     </div>
   );
 };

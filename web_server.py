@@ -19,6 +19,14 @@ from config import (
     ADMIN_ID,
 )
 from database import announcements_collection, users_collection, winners_collection, payments_collection,games_collection
+from database import (
+    approve_withdrawal,
+    get_wallet_info,
+    get_withdrawal_requests,
+    give_channel_bonus,
+    request_withdrawal,
+    update_referral_bonus_for_game,
+)
 from services.game_service import (
     create_payment_record, 
     get_user_dashboard, 
@@ -511,6 +519,37 @@ async def referral(telegram_id: int):
     })
 
 
+@app.get("/api/wallet/{telegram_id}")
+async def wallet_info(telegram_id: int):
+    user = users_collection.find_one({"telegram_id": telegram_id}, {"telegram_id": 1})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    payload = get_wallet_info(telegram_id)
+    payload = convert_datetime_to_str(payload)
+    return JSONResponse(payload)
+
+
+@app.post("/api/withdraw")
+async def wallet_withdraw(data: dict):
+    telegram_id = int(data.get("telegram_id", 0))
+    amount = int(data.get("amount", 100))
+    if not telegram_id:
+        return JSONResponse({"success": False, "message": "telegram_id required"}, status_code=400)
+    ok, result = request_withdrawal(telegram_id, amount)
+    if not ok:
+        return JSONResponse({"success": False, "message": result}, status_code=400)
+    return JSONResponse({"success": True, "request": convert_datetime_to_str(result)})
+
+
+@app.post("/api/channel_bonus")
+async def claim_channel_bonus(data: dict):
+    telegram_id = int(data.get("telegram_id", 0))
+    if not telegram_id:
+        return JSONResponse({"success": False, "message": "telegram_id required"}, status_code=400)
+    ok, message = give_channel_bonus(telegram_id)
+    return JSONResponse({"success": ok, "message": message})
+
+
 # ============ ADMIN API ROUTES ============
 
 # Admin authentication check
@@ -662,6 +701,39 @@ async def admin_reject_payment(data: dict):
     user_id = payment["telegram_id"]
     success, message = reject_payment(user_id, admin_id, reason)
     return JSONResponse({"success": success, "message": message})
+
+
+@app.get("/api/admin/withdrawals")
+async def admin_withdrawals(admin_id: int = Query(...), status: str = Query("pending")):
+    if not is_admin(admin_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    rows = convert_datetime_to_str(get_withdrawal_requests(status=status))
+    return JSONResponse({"items": rows, "status": status, "count": len(rows)})
+
+
+@app.post("/api/admin/approve-withdrawal")
+async def admin_approve_withdrawal(data: dict):
+    admin_id = int(data.get("admin_id", 0))
+    request_id = str(data.get("request_id", "")).strip()
+    if not is_admin(admin_id):
+        return JSONResponse({"success": False, "message": "Admin access required"}, status_code=403)
+    if not request_id:
+        return JSONResponse({"success": False, "message": "request_id required"}, status_code=400)
+    ok, message = approve_withdrawal(request_id, admin_id)
+    return JSONResponse({"success": ok, "message": message})
+
+
+@app.post("/api/admin/set-game-bonus")
+async def admin_set_game_bonus(data: dict):
+    admin_id = int(data.get("admin_id", 0))
+    game_id = int(data.get("game_id", 0))
+    bonus_amount = int(data.get("bonus_amount", 0))
+    if not is_admin(admin_id):
+        return JSONResponse({"success": False, "message": "Admin access required"}, status_code=403)
+    if game_id <= 0 or bonus_amount <= 0:
+        return JSONResponse({"success": False, "message": "game_id and bonus_amount must be positive"}, status_code=400)
+    ok, message = update_referral_bonus_for_game(game_id, bonus_amount, admin_id)
+    return JSONResponse({"success": ok, "message": message})
     
 @app.get("/api/admin/all-users")
 async def admin_all_users(admin_id: int = Query(...), limit: int = 50, offset: int = 0):

@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
+import uuid
 
 from pymongo import ASCENDING, DESCENDING, MongoClient, ReturnDocument
 from pymongo.errors import DuplicateKeyError
@@ -13,10 +14,12 @@ payments_collection = None
 games_collection = None
 winners_collection = None
 announcements_collection = None
+game_bonuses_collection = None
+wallet_migrations_collection = None
 
 
 def init_db():
-    global client, db, users_collection, payments_collection, games_collection, winners_collection, announcements_collection
+    global client, db, users_collection, payments_collection, games_collection, winners_collection, announcements_collection, game_bonuses_collection, wallet_migrations_collection
     try:
         client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=8000, maxPoolSize=60)
         client.admin.command("ping")
@@ -27,6 +30,8 @@ def init_db():
         games_collection = db["games"]
         winners_collection = db["winners"]
         announcements_collection = db["announcements"]
+        game_bonuses_collection = db["game_bonuses"]
+        wallet_migrations_collection = db["wallet_migrations"]
         ensure_indexes()
     except Exception as e:
         print(f"❌ MongoDB connection failed: {e}")
@@ -63,6 +68,8 @@ def ensure_indexes():
 
     # Announcements collection indexes
     announcements_collection.create_index([("created_at", DESCENDING)])
+    game_bonuses_collection.create_index("game_id", unique=True)
+    wallet_migrations_collection.create_index("key", unique=True)
 
 
 def get_active_game() -> Optional[Dict[str, Any]]:
@@ -330,6 +337,314 @@ def mark_user_active(telegram_id: int):
         {"$set": {"last_active": datetime.utcnow(), "updated_at": datetime.utcnow()}},
         return_document=ReturnDocument.AFTER,
     )
+
+
+# ============= WALLET FUNCTIONS (ADD ONLY) =============
+
+def _wallet_defaults() -> Dict[str, Any]:
+    return {
+        "wallet_balance": 0,
+        "total_earned": 0,
+        "registration_bonus_claimed": False,
+        "channel_bonus_claimed": False,
+        "withdrawal_requests": [],
+        "earning_history": [],
+    }
+
+
+def init_wallet_for_user(telegram_id: int):
+    """Initialize wallet fields for user if missing."""
+    users_collection.update_one(
+        {"telegram_id": telegram_id},
+        {
+            "$setOnInsert": _wallet_defaults(),
+            "$set": {"updated_at": datetime.utcnow()},
+        },
+        upsert=False,
+    )
+    users_collection.update_one(
+        {"telegram_id": telegram_id, "wallet_balance": {"$exists": False}},
+        {"$set": {**_wallet_defaults(), "updated_at": datetime.utcnow()}},
+    )
+
+
+def _push_earning(telegram_id: int, earning: Dict[str, Any], amount: int):
+    users_collection.update_one(
+        {"telegram_id": telegram_id},
+        {
+            "$inc": {"wallet_balance": amount, "total_earned": amount},
+            "$push": {
+                "earning_history": {
+                    "$each": [earning],
+                    "$position": 0,
+                    "$slice": 200,
+                }
+            },
+            "$set": {"updated_at": datetime.utcnow()},
+        },
+    )
+
+
+def give_registration_bonus(telegram_id: int):
+    """Give one-time 5 ETB registration bonus."""
+    init_wallet_for_user(telegram_id)
+    user = users_collection.find_one({"telegram_id": telegram_id}, {"registration_bonus_claimed": 1, "username": 1})
+    if not user or user.get("registration_bonus_claimed"):
+        return False, "Registration bonus already claimed"
+
+    amount = 5
+    _push_earning(
+        telegram_id,
+        {
+            "type": "registration_bonus",
+            "amount": amount,
+            "from_user": user.get("username", ""),
+            "payment_amount": 0,
+            "date": datetime.utcnow(),
+            "description": "Registration bonus credited",
+        },
+        amount,
+    )
+    users_collection.update_one(
+        {"telegram_id": telegram_id},
+        {"$set": {"registration_bonus_claimed": True, "updated_at": datetime.utcnow()}},
+    )
+    return True, "Registration bonus credited"
+
+
+def give_channel_bonus(telegram_id: int):
+    """Give one-time 5 ETB channel bonus."""
+    init_wallet_for_user(telegram_id)
+    user = users_collection.find_one({"telegram_id": telegram_id}, {"channel_bonus_claimed": 1, "username": 1})
+    if not user or user.get("channel_bonus_claimed"):
+        return False, "Channel bonus already claimed"
+
+    amount = 5
+    _push_earning(
+        telegram_id,
+        {
+            "type": "channel_bonus",
+            "amount": amount,
+            "from_user": user.get("username", ""),
+            "payment_amount": 0,
+            "date": datetime.utcnow(),
+            "description": "Channel join bonus credited",
+        },
+        amount,
+    )
+    users_collection.update_one(
+        {"telegram_id": telegram_id},
+        {"$set": {"channel_bonus_claimed": True, "updated_at": datetime.utcnow()}},
+    )
+    return True, "Channel bonus credited"
+
+
+def get_referral_bonus_for_game(game_id: int):
+    """Get referral bonus amount for a game. Defaults to 5 ETB."""
+    row = game_bonuses_collection.find_one({"game_id": game_id}, {"referral_bonus_amount": 1})
+    if not row:
+        return 5
+    return int(row.get("referral_bonus_amount", 5))
+
+
+def update_referral_bonus_for_game(game_id: int, bonus_amount: int, admin_id: int):
+    """Upsert referral bonus amount for a specific game."""
+    if bonus_amount < 1:
+        return False, "Bonus amount must be at least 1 ETB"
+    game_bonuses_collection.update_one(
+        {"game_id": game_id},
+        {
+            "$set": {
+                "game_id": game_id,
+                "referral_bonus_amount": int(bonus_amount),
+                "updated_at": datetime.utcnow(),
+                "updated_by": admin_id,
+            }
+        },
+        upsert=True,
+    )
+    return True, "Referral bonus updated"
+
+
+def give_referral_payment_bonus(referrer_id: int, referred_user_id: int, payment_amount: int, game_id: int):
+    """Give referrer configurable bonus after referred user's approved payment."""
+    init_wallet_for_user(referrer_id)
+    marker_key = f"referral_bonus:{referrer_id}:{referred_user_id}:{game_id}:{payment_amount}"
+    try:
+        wallet_migrations_collection.insert_one(
+            {"key": marker_key, "created_at": datetime.utcnow(), "type": "referral_bonus"}
+        )
+    except DuplicateKeyError:
+        return False, "Referral bonus already credited"
+
+    amount = get_referral_bonus_for_game(game_id)
+    referred_user = users_collection.find_one({"telegram_id": referred_user_id}, {"username": 1})
+    from_user = referred_user.get("username", f"user_{referred_user_id}") if referred_user else f"user_{referred_user_id}"
+    _push_earning(
+        referrer_id,
+        {
+            "type": "referral_payment",
+            "amount": amount,
+            "from_user": from_user,
+            "payment_amount": payment_amount,
+            "date": datetime.utcnow(),
+            "description": f"Referral payment bonus from @{from_user} (Game {game_id})",
+        },
+        amount,
+    )
+    return True, "Referral payment bonus credited"
+
+
+def get_wallet_info(telegram_id: int):
+    """Return wallet info for user."""
+    init_wallet_for_user(telegram_id)
+    user = users_collection.find_one(
+        {"telegram_id": telegram_id},
+        {
+            "_id": 0,
+            "wallet_balance": 1,
+            "total_earned": 1,
+            "registration_bonus_claimed": 1,
+            "channel_bonus_claimed": 1,
+            "earning_history": 1,
+            "withdrawal_requests": 1,
+        },
+    )
+    return user or {
+        "wallet_balance": 0,
+        "total_earned": 0,
+        "registration_bonus_claimed": False,
+        "channel_bonus_claimed": False,
+        "earning_history": [],
+        "withdrawal_requests": [],
+    }
+
+
+def request_withdrawal(telegram_id: int, amount: int):
+    """Create withdrawal request when user has enough wallet balance."""
+    init_wallet_for_user(telegram_id)
+    user = users_collection.find_one({"telegram_id": telegram_id}, {"wallet_balance": 1, "withdrawal_requests": 1})
+    if not user:
+        return False, "User not found"
+    if amount < 100:
+        return False, "Minimum withdrawal is 100 ETB"
+    if user.get("wallet_balance", 0) < amount:
+        return False, "Insufficient wallet balance"
+
+    request_id = str(uuid.uuid4())
+    request_row = {
+        "request_id": request_id,
+        "amount": amount,
+        "requested_at": datetime.utcnow(),
+        "status": "pending",
+        "paid_by": "",
+        "paid_at": None,
+    }
+    users_collection.update_one(
+        {"telegram_id": telegram_id},
+        {
+            "$inc": {"wallet_balance": -amount},
+            "$push": {"withdrawal_requests": request_row},
+            "$set": {"updated_at": datetime.utcnow()},
+        },
+    )
+    return True, {"request_id": request_id, "amount": amount}
+
+
+def get_withdrawal_requests(status: str = "pending"):
+    """List withdrawal requests from all users by status."""
+    users = users_collection.find(
+        {"withdrawal_requests": {"$exists": True, "$ne": []}},
+        {"telegram_id": 1, "username": 1, "withdrawal_requests": 1},
+    )
+    rows = []
+    for user in users:
+        for req in user.get("withdrawal_requests", []):
+            if req.get("status") == status:
+                rows.append(
+                    {
+                        "request_id": req.get("request_id"),
+                        "telegram_id": user["telegram_id"],
+                        "username": user.get("username", f"user_{user['telegram_id']}"),
+                        "amount": req.get("amount", 0),
+                        "requested_at": req.get("requested_at"),
+                        "status": req.get("status"),
+                        "paid_by": req.get("paid_by", ""),
+                        "paid_at": req.get("paid_at"),
+                    }
+                )
+    rows.sort(key=lambda x: x.get("requested_at") or datetime.utcnow(), reverse=True)
+    return rows
+
+
+def approve_withdrawal(request_id: str, admin_id: int):
+    """Mark withdrawal request as paid by admin."""
+    user = users_collection.find_one({"withdrawal_requests.request_id": request_id}, {"telegram_id": 1})
+    if not user:
+        return False, "Withdrawal request not found"
+    result = users_collection.update_one(
+        {"telegram_id": user["telegram_id"], "withdrawal_requests.request_id": request_id},
+        {
+            "$set": {
+                "withdrawal_requests.$.status": "paid",
+                "withdrawal_requests.$.paid_by": str(admin_id),
+                "withdrawal_requests.$.paid_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        },
+    )
+    if result.modified_count == 0:
+        return False, "Withdrawal request not updated"
+    return True, "Withdrawal marked as paid"
+
+
+def process_retroactive_bonuses():
+    """One-time retroactive credits: 5 ETB per approved referred payment."""
+    marker_key = "retroactive_bonuses_v1"
+    existing_run = wallet_migrations_collection.find_one({"key": marker_key})
+    if existing_run:
+        return False, "Retroactive bonuses already processed"
+
+    credited = 0
+    referred_users = users_collection.find({"invited_by": {"$type": "int"}}, {"telegram_id": 1, "invited_by": 1, "username": 1})
+    for referred in referred_users:
+        referrer_id = referred.get("invited_by")
+        if not referrer_id:
+            continue
+        payments = payments_collection.find(
+            {"telegram_id": referred["telegram_id"], "status": "approved"},
+            {"payment_id": 1, "amount": 1, "game_id": 1},
+        )
+        for pay in payments:
+            pay_id = pay.get("payment_id")
+            if not pay_id:
+                continue
+            credit_marker = f"retroactive:{referrer_id}:{pay_id}"
+            try:
+                wallet_migrations_collection.insert_one(
+                    {"key": credit_marker, "type": "retroactive_bonus_credit", "created_at": datetime.utcnow()}
+                )
+            except DuplicateKeyError:
+                continue
+            init_wallet_for_user(referrer_id)
+            _push_earning(
+                referrer_id,
+                {
+                    "type": "retroactive_bonus",
+                    "amount": 5,
+                    "from_user": referred.get("username", f"user_{referred['telegram_id']}"),
+                    "payment_amount": pay.get("amount", 0),
+                    "date": datetime.utcnow(),
+                    "description": f"Retroactive referral bonus for payment {pay_id}",
+                },
+                5,
+            )
+            credited += 1
+
+    wallet_migrations_collection.insert_one(
+        {"key": marker_key, "type": "retroactive_bonus_run", "created_at": datetime.utcnow(), "credited_count": credited}
+    )
+    return True, f"Retroactive bonuses processed: {credited}"
 
 
 # Initialize database on import

@@ -6,6 +6,7 @@ from typing import Optional
 import traceback
 from config import LUCKY_NUMBER_PRICE_ETB, REFERRAL_POINTS_PER_USER
 from database import (
+    give_referral_payment_bonus,
     get_active_game,
     payments_collection,
     rotate_game,
@@ -204,6 +205,15 @@ def approve_payment(telegram_id: int, admin_id: int):
             }
         }
     )
+
+    referrer_id = user.get("invited_by")
+    if referrer_id:
+        give_referral_payment_bonus(
+            referrer_id=referrer_id,
+            referred_user_id=telegram_id,
+            payment_amount=pending_payment.get("amount", 0),
+            game_id=active_game_id,
+        )
     
     return True, f"Payment approved for number {approved_number}"
 

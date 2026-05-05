@@ -35,6 +35,14 @@ from handlers.admin import (
     check_payments_handler
 )
 from handlers.payment import photo_handler
+from handlers.wallet import (
+    admin_bonus_handler,
+    admin_withdrawals_handler,
+    join_channel_handler,
+    wallet_callback_handler,
+    wallet_handler,
+    withdraw_handler,
+)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
@@ -76,15 +84,21 @@ def main():
     app.add_handler(status_handler)
     app.add_handler(profile_handler)
     app.add_handler(app_handler)
+    app.add_handler(wallet_handler)
+    app.add_handler(withdraw_handler)
+    app.add_handler(join_channel_handler)
     
     # Admin commands
     app.add_handler(announce_winner_handler)
     app.add_handler(check_payments_handler)
+    app.add_handler(admin_withdrawals_handler)
+    app.add_handler(admin_bonus_handler)
     
     # Payment and callback handlers
     app.add_handler(photo_handler)
     app.add_handler(approve_handler)
     app.add_handler(reject_handler)
+    app.add_handler(wallet_callback_handler)
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_error_handler(error_handler)
     

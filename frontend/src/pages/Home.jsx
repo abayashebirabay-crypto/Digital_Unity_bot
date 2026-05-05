@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
+  claimChannelBonus,
   getUserDashboard,
   getLuckyNumbers,
   getWinners,
   getAnnouncements,
   getReferralStats,
   getGameConfig,
+  getWallet,
+  requestWithdrawal,
 } from "../services/api";
 import PaymentCard from "../components/PaymentCard";
 import ReferralCard from "../components/ReferralCard";
 import NumberGrid from "../components/NumberGrid";
+import Wallet from "../components/Wallet";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MIN_LUCKY_NUMBER = 1;
@@ -146,6 +150,9 @@ const Home = ({ userId, isAdmin }) => {
   const [minNumber, setMinNumber] = useState(MIN_LUCKY_NUMBER);
   const [maxNumber, setMaxNumber] = useState(MAX_LUCKY_NUMBER);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [walletData, setWalletData] = useState(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [channelLoading, setChannelLoading] = useState(false);
 
   const botUsername = "DigitalUnity_bot";
   const referralLink = `https://t.me/${botUsername}?start=ref_${userId}`;
@@ -181,6 +188,13 @@ const Home = ({ userId, isAdmin }) => {
 
       const announcementsRes = await getAnnouncements();
       setAnnouncements(announcementsRes.data.items || []);
+
+      try {
+        const walletRes = await getWallet(userId);
+        setWalletData(walletRes.data);
+      } catch (err) {
+        console.error("Wallet load error:", err);
+      }
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -268,6 +282,39 @@ const Home = ({ userId, isAdmin }) => {
       alert("Referral link copied!");
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    try {
+      setWithdrawing(true);
+      const res = await requestWithdrawal(userId, 100);
+      if (res.data?.success) {
+        alert("Withdrawal request submitted.");
+        const walletRes = await getWallet(userId);
+        setWalletData(walletRes.data);
+      } else {
+        alert(res.data?.message || "Withdrawal failed.");
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Withdrawal failed.");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const handleJoinChannelBonus = async () => {
+    try {
+      setChannelLoading(true);
+      window.open("https://t.me/Unity_J", "_blank");
+      const res = await claimChannelBonus(userId);
+      alert(res.data?.message || "Done");
+      const walletRes = await getWallet(userId);
+      setWalletData(walletRes.data);
+    } catch (err) {
+      alert(err?.response?.data?.message || "Channel bonus failed.");
+    } finally {
+      setChannelLoading(false);
     }
   };
 
@@ -359,6 +406,43 @@ const Home = ({ userId, isAdmin }) => {
           className="flex justify-center"
         >
           <Logo size="md" />
+        </motion.div>
+
+        {/* Top Wallet Summary */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">👛</span>
+              <span className="text-white font-semibold text-sm">Wallet</span>
+            </div>
+            <button
+              onClick={() => (window.location.href = `/wallet?user_id=${userId}`)}
+              className="text-xs bg-[#1E3A8A] text-white px-3 py-1 rounded-full"
+            >
+              Open
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-[#0A192F]/50 rounded-lg p-2">
+              <div className="text-white/60">Balance</div>
+              <div className="text-emerald-400 font-bold text-base">
+                {walletData?.wallet_balance || 0} ETB
+              </div>
+            </div>
+            <div className="bg-[#0A192F]/50 rounded-lg p-2">
+              <div className="text-white/60">Total Earned</div>
+              <div className="text-white font-bold text-base">
+                {walletData?.total_earned || 0} ETB
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] text-white/70">
+            Registration bonus: {walletData?.registration_bonus_claimed ? "Claimed" : "Pending"} | Channel bonus: {walletData?.channel_bonus_claimed ? "Claimed" : "Pending"}
+          </div>
         </motion.div>
 
         {/* Welcome Card */}
@@ -490,6 +574,14 @@ const Home = ({ userId, isAdmin }) => {
           </div>
           <div className="text-xs mt-1 opacity-80">👇 Tap to invite</div>
         </motion.div>
+
+        <Wallet
+          wallet={walletData || {}}
+          onWithdraw={handleWithdraw}
+          withdrawing={withdrawing}
+          onJoinChannel={handleJoinChannelBonus}
+          channelLoading={channelLoading}
+        />
 
         {/* Winners Board - Simplified */}
         {/* Winners Board - Organized by Round */}

@@ -58,5 +58,10 @@ export const getAnnouncements = () => api.get('/api/announcements');
 export const getReferralStats = (userId) => api.get(`/api/referral/${userId}`);
 export const getReferralLeaderboard = () => api.get('/api/referral-leaderboard');
 export const getGameConfig = () => api.get('/api/game/config');
+export const getWallet = (userId) => api.get(`/api/wallet/${userId}`);
+export const requestWithdrawal = (telegramId, amount = 100) =>
+  api.post('/api/withdraw', { telegram_id: telegramId, amount });
+export const claimChannelBonus = (telegramId) =>
+  api.post('/api/channel_bonus', { telegram_id: telegramId });
 
 export default api;
