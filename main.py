@@ -94,7 +94,9 @@ def main():
     print(f"   • /announce_winner - Announce winner manually")
     
     # Start polling (this runs forever)
-    app.stop()
+    # app.stop()
+  app.run_polling()
+
 
 if __name__ == "__main__":
     try:
