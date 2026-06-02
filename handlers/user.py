@@ -52,7 +52,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     await update.message.reply_text(
         "🎓 *Digital Unity Platform*\n\n"
-        "University-level lucky number voting with transparent payment verification, secure winner selection, and live referral rewards.\n\n"
+        "lucky number voting with transparent payment verification, secure winner selection, and live referral rewards.\n\n"
         "Tap *Start Registration* to continue.",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(
