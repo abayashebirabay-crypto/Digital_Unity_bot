@@ -46,10 +46,9 @@ app = FastAPI(title="Digital Unity Mini App API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "https://digital-unity-bot.vercel.app",
-    "http://localhost:3000", 
-    "http://localhost:5173"
-],
+        "https://digital-unity-bot-black.vercel.app",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
