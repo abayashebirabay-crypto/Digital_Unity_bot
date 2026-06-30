@@ -57,14 +57,14 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
-  loadStats();
-  loadPendingPayments();
-  loadAllUsers();
-  loadAnnouncements();
-  loadWinnerLeaderboard();
-  loadActiveGame();
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    loadStats();
+    loadPendingPayments();
+    loadAllUsers();
+    loadAnnouncements();
+    loadWinnerLeaderboard();
+    loadActiveGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadActiveGame = useCallback(async () => {
     try {
