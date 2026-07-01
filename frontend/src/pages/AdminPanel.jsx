@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_BASE_URL = "https://digitalunitybot-production.up.railway.app";
+const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const API_BASE_URL = (process.env.REACT_APP_API_URL || (isLocalhost ? "http://localhost:8000" : "https://digitalunitybot-production.up.railway.app")).replace(/\/$/, "");
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState("pending");

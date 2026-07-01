@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the current window's origin (works for localhost and ngrok)
-const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin;
+const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const API_BASE_URL = (process.env.REACT_APP_API_URL || (isLocalhost ? 'http://localhost:8000' : 'https://digitalunitybot-production.up.railway.app')).replace(/\/$/, '');
 console.log('API Base URL:', API_BASE_URL);
 
 const api = axios.create({

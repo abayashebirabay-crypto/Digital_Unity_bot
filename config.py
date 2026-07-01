@@ -40,7 +40,7 @@ else:
 DB_NAME: Final = os.getenv("DB_NAME", "digital_unity")
 
 # Web App URL
-WEB_APP_URL: Final = os.getenv("WEB_APP_URL", "https://digital-unity-bot-black.vercel.app/")
+WEB_APP_URL: Final = os.getenv("WEB_APP_URL", "https://digital-unity-bot-ten.vercel.app/")
 
 # File Upload Configuration
 UPLOAD_DIR: Final = os.getenv("UPLOAD_DIR", "uploads")
